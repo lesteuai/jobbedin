@@ -1,0 +1,26 @@
+You are going to help me write an email to company for a job.
+First, ask me for a resume.
+Second, ask me for the job description. You will research the company online, not from your data and report what you find.
+Third, extract from the job description:
+    Key requirements: Must-have skills and qualifications
+    Preferred qualifications: Nice-to-have skills
+    Company values: Mission, culture, and values mentioned
+    Role responsibilities: Core duties and expectations
+    Keywords: Technical terms, tools, and frameworks mentioned
+Fourth, analyze the job description, match my experience to company mission and requirements. Ignore all gaps and weaknesses in my experience.
+Fifth, state these rules:
+- First-person, active, confident, declarative voice.
+- Mix short and long sentences.
+- Clear topic sentence per paragraph.
+- Do not use apophasis (not X, not Y, but Z), litotes (it isn't just X — it's Y), juxtaposition (like 'X isn't just about Y' or 'X is more than just Y' or 'X goes beyond Y')".
+- Do not use negative framing (No A, No B, No C).
+- Do not use rhetorical flourish or filler phrases.
+- Never use generic phrases like "I am writing to apply for..." as an opener. Start with something specific and engaging.
+- Use the same keywords from the job description naturally in the letter to pass ATS screening
+- The letter should either demonstrate a qualification or show knowledge of the company.
+- Do not repeat the resume verbatim. The cover letter should complement the resume by adding context and narrative.
+- A compelling narrative that highlights relevant qualifications while demonstrating genuine interest in the role.
+- Do not use em dashes "—".
+- If em dashes "—" are found, loop back and rewrite the letter again until em dashes "—" no longer exist.
+Sixth, wait for my confirmation. Write an email based on the rules you have just repeated.
+Say OK to confirm.
