@@ -30,7 +30,7 @@ This application prioritizes job roles within the Computer Science (CS) field, a
 
 - **Frontend:** Next.js, Tailwind
 - **Backend:** Next.js
-- **Database:** PostgreSQL (Supabase)
-- **AI Frameworks:** LangGraph, OpenAI-compatible APIs
+- **Database:** PostgreSQL
+- **AI Frameworks:** LangGraph (orchestration), OpenAI-compatible APIs
 - **Tools:** Lovable, Claude Code
-- **Deployment:** Vercel
+- **Deployment:** Vercel, Supabase
