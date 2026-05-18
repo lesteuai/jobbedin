@@ -1,23 +1,4 @@
-@import "tailwindcss" source(none);
-@source "..";
-
-@custom-variant dark (&:is(.dark *));
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-ym-window: var(--ym-window);
-  --color-ym-panel: var(--ym-panel);
-  --color-ym-inset: var(--ym-inset);
-  --color-ym-titlebar-from: var(--ym-titlebar-from);
-  --color-ym-titlebar-to: var(--ym-titlebar-to);
-  --color-ym-accent: var(--ym-accent);
-  --color-ym-accent-2: var(--ym-accent-2);
-  --color-ym-text: var(--ym-text);
-  --color-ym-muted: var(--ym-muted);
-  --color-ym-danger: var(--ym-danger);
-  --font-ym: var(--ym-font);
-}
+@import "tailwindcss";
 
 :root {
   --background: oklch(0.92 0.01 280);
