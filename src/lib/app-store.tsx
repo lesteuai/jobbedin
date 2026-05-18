@@ -30,9 +30,9 @@ TypeScript, React, Python, LLM tooling, Postgres, AWS.
 ## Education
 B.S. Computer Science, State University, 2019.`;
 
-const SAMPLE_JOB = `Senior Full-Stack Engineer — Babyscripts (Remote)
+const SAMPLE_JOB = `Senior Full-Stack Engineer — X (Remote)
 
-We're building data-driven maternal-health software. Looking for engineers with:
+We're building data-driven X-health software. Looking for engineers with:
 - 4+ years TypeScript / React
 - Experience shipping LLM-powered features
 - Comfort with Postgres + cloud infra
@@ -45,7 +45,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   ]);
   const [jobs, setJobs] = useState<Item[]>([
     { id: "j1", name: "Job 1", content: SAMPLE_JOB },
-    { id: "j2", name: "Job 2", content: SAMPLE_JOB.replace("Babyscripts", "Northwind Labs") },
+    { id: "j2", name: "Job 2", content: SAMPLE_JOB.replace("X", "Northwind Labs") },
   ]);
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);

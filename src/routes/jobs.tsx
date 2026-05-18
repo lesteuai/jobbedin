@@ -18,14 +18,14 @@ type Mode = "letter" | "message";
 type ChatLine = { role: "user" | "ai"; text: string };
 
 const MOCK: Record<Exclude<Tab, "Generate">, string> = {
-  Company: `# Babyscripts
+  Company: `# X
 
-**Industry:** Digital Maternal Health
+**Industry:** Digital X Health
 **Founded:** 2014 · **HQ:** Washington, DC · **Size:** ~80 employees
-**Funding:** Series B — $14M (MemorialCare Innovation Fund)
+**Funding:** Series B — $14M (Y Innovation Fund)
 
 ## What they do
-Babyscripts builds a virtual care platform for pregnant patients, used by
+X builds a virtual care platform for pregnant patients, used by
 30+ health systems across the US. Their app delivers risk-screening
 content, remote BP monitoring, and care-team alerts.
 
@@ -81,7 +81,7 @@ const SEED: Record<Mode, ChatLine[]> = {
 
 Dear Hiring Manager,
 
-Maternal mortality is a solvable problem. Babyscripts is one of the few
+X mortality is a solvable problem. X is one of the few
 organizations treating it that way — building data-driven, clinically
 validated tools that meet patients where they are. That's why I'm writing.
 
@@ -240,13 +240,13 @@ function JobsPage() {
                       variant={mode === "letter" ? "primary" : "default"}
                       onClick={() => setMode("letter")}
                     >
-                      ✉ Cover Letter
+                      Cover Letter
                     </YmButton>
                     <YmButton
                       variant={mode === "message" ? "primary" : "default"}
                       onClick={() => setMode("message")}
                     >
-                      💬 Message
+                      Message
                     </YmButton>
                     <span style={{ color: "#666", marginLeft: 8 }}>
                       Chatting with <b style={{ color: "oklch(0.4 0.2 250)" }}>JobbedIn-AI</b>
@@ -299,13 +299,6 @@ function JobsPage() {
                       }}
                     />
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <YmButton
-                        onClick={() => setMode(mode === "letter" ? "message" : "letter")}
-                        title="Toggle Cover Letter / Message"
-                        style={{ minWidth: 56 }}
-                      >
-                        {mode === "letter" ? "M ⇄" : "in ⇄"}
-                      </YmButton>
                       <YmButton onClick={handleClear} disabled={!canClear} style={{ minWidth: 56 }}>
                         Clear
                       </YmButton>
