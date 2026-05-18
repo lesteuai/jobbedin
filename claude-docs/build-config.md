@@ -184,30 +184,10 @@ Unused in current design (project uses custom .ym-* components, not shadcn/ui). 
 - `@tailwindcss/vite` 4.2.1 — Tailwind v4 Vite plugin
 - `clsx` 2.1.1 — Conditional className utility
 - `tailwind-merge` 3.5.0 — Merge conflicting Tailwind classes
-- `tw-animate-css` 1.3.4 — Pre-built animation classes
 
 **UI & Components**
 
-- `@radix-ui/*` (30+ packages) — Headless component primitives
-  - All installed; none imported in current design
-  - Future use expected for accessible form elements, popovers, etc.
-- `lucide-react` 0.575.0 — Icon library (unused; emojis used instead)
-- `recharts` 2.15.4 — Chart library (unused; future use for reports)
 - `react-markdown` 10.1.0 — Markdown renderer (used in analysis panels)
-- `sonner` 2.0.7 — Toast notification library (installed, unused)
-- `cmdk` 1.1.1 — Command palette component (installed, unused)
-- `embla-carousel-react` 8.6.0 — Carousel component (unused)
-- `vaul` 1.1.2 — Drawer/sheet primitives (unused)
-- `input-otp` 1.4.2 — OTP input component (unused)
-- `react-day-picker` 9.14.0 — Date picker (unused)
-- `react-resizable-panels` 4.6.5 — Resizable panels (unused)
-- `class-variance-authority` 0.7.1 — Component variant system (used by shadcn/ui components, unused here)
-
-**Forms & Validation**
-
-- `react-hook-form` 7.71.2 — Form state (installed, not used)
-- `zod` 3.24.2 — Schema validation (installed, not used)
-- `@hookform/resolvers` 5.2.2 — Form validation adapters (installed, not used)
 
 **Build & Development**
 
@@ -236,9 +216,6 @@ Unused in current design (project uses custom .ym-* components, not shadcn/ui). 
 - `prettier` 3.8.3 — Code formatter
 - `globals` 15.15.0 — Global variable definitions
 
-**Utilities**
-
-- `date-fns` 4.1.0 — Date manipulation (unused)
 
 ## Build Process
 
