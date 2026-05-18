@@ -1,0 +1,318 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ym-window: var(--ym-window);
+  --color-ym-panel: var(--ym-panel);
+  --color-ym-inset: var(--ym-inset);
+  --color-ym-titlebar-from: var(--ym-titlebar-from);
+  --color-ym-titlebar-to: var(--ym-titlebar-to);
+  --color-ym-accent: var(--ym-accent);
+  --color-ym-accent-2: var(--ym-accent-2);
+  --color-ym-text: var(--ym-text);
+  --color-ym-muted: var(--ym-muted);
+  --color-ym-danger: var(--ym-danger);
+  --font-ym: var(--ym-font);
+}
+
+:root {
+  --background: oklch(0.92 0.01 280);
+  --foreground: oklch(0.18 0.02 280);
+
+  /* Yahoo Messenger palette */
+  --ym-window: oklch(0.93 0.005 90);          /* #ECE9D8-ish */
+  --ym-panel: oklch(0.97 0.005 90);
+  --ym-inset: oklch(0.99 0.003 90);
+  --ym-titlebar-from: oklch(0.45 0.18 295);   /* deep purple */
+  --ym-titlebar-to: oklch(0.55 0.20 270);     /* purple-blue */
+  --ym-accent: oklch(0.55 0.22 295);          /* yahoo purple */
+  --ym-accent-2: oklch(0.65 0.20 30);         /* orange-y */
+  --ym-text: oklch(0.18 0.02 280);
+  --ym-muted: oklch(0.45 0.02 280);
+  --ym-danger: oklch(0.55 0.22 27);
+
+  --ym-font: Tahoma, "MS Sans Serif", Geneva, Verdana, sans-serif;
+}
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    background:
+      repeating-linear-gradient(
+        45deg,
+        oklch(0.88 0.02 285) 0 2px,
+        oklch(0.86 0.025 285) 2px 4px
+      );
+    color: var(--ym-text);
+    font-family: var(--ym-font);
+    font-size: 12px;
+  }
+}
+
+/* ---------- Yahoo Messenger primitives ---------- */
+
+.ym-window {
+  background: var(--ym-window);
+  border: 1px solid oklch(0.25 0.05 285);
+  border-radius: 6px 6px 4px 4px;
+  box-shadow:
+    inset 0 0 0 1px oklch(0.98 0.005 90),
+    0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.ym-titlebar {
+  background: linear-gradient(
+    180deg,
+    var(--ym-titlebar-from) 0%,
+    var(--ym-titlebar-to) 55%,
+    var(--ym-titlebar-from) 100%
+  );
+  color: white;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 5px 5px 0 0;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4);
+  font-weight: bold;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.ym-titlebar-glow {
+  flex: 1;
+  height: 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  border-radius: 4px;
+  margin: 0 6px;
+}
+
+.ym-winbtn {
+  width: 18px;
+  height: 16px;
+  background: linear-gradient(180deg, #fff 0%, #c8c8c8 100%);
+  border: 1px solid #333;
+  border-radius: 2px;
+  font-size: 10px;
+  line-height: 12px;
+  color: #000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  font-family: var(--ym-font);
+}
+
+.ym-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 14px;
+  font-family: var(--ym-font);
+  font-size: 12px;
+  color: #000;
+  background: linear-gradient(180deg, #fefefe 0%, #d6d2c2 100%);
+  border-top: 1px solid #fff;
+  border-left: 1px solid #fff;
+  border-right: 1px solid #555;
+  border-bottom: 1px solid #555;
+  border-radius: 3px;
+  cursor: pointer;
+  min-height: 24px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.ym-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffffff 0%, #e5dfc8 100%);
+}
+.ym-btn:active:not(:disabled) {
+  border-top: 1px solid #555;
+  border-left: 1px solid #555;
+  border-right: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+  background: linear-gradient(180deg, #c8c4b4 0%, #e0dcc8 100%);
+}
+.ym-btn:disabled {
+  color: #888;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.ym-btn-primary {
+  background: linear-gradient(180deg, oklch(0.7 0.18 295) 0%, oklch(0.4 0.2 295) 100%);
+  color: white;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4);
+  font-weight: bold;
+  border-top: 1px solid oklch(0.8 0.1 295);
+  border-left: 1px solid oklch(0.8 0.1 295);
+  border-right: 1px solid oklch(0.2 0.1 295);
+  border-bottom: 1px solid oklch(0.2 0.1 295);
+}
+.ym-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, oklch(0.75 0.18 295) 0%, oklch(0.45 0.2 295) 100%);
+}
+
+.ym-inset {
+  background: var(--ym-inset);
+  border-top: 1px solid #888;
+  border-left: 1px solid #888;
+  border-right: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+}
+
+.ym-panel {
+  background: var(--ym-panel);
+  border-top: 1px solid #fff;
+  border-left: 1px solid #fff;
+  border-right: 1px solid #888;
+  border-bottom: 1px solid #888;
+}
+
+.ym-input,
+.ym-textarea {
+  font-family: var(--ym-font);
+  font-size: 12px;
+  background: white;
+  border-top: 1px solid #888;
+  border-left: 1px solid #888;
+  border-right: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+  padding: 4px 6px;
+  outline: none;
+  color: var(--ym-text);
+  width: 100%;
+}
+.ym-input:focus,
+.ym-textarea:focus {
+  outline: 1px dotted #444;
+  outline-offset: -3px;
+}
+
+.ym-listitem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+  color: var(--ym-text);
+}
+.ym-listitem:hover {
+  background: oklch(0.85 0.05 285 / 0.5);
+}
+.ym-listitem[data-active="true"] {
+  background: linear-gradient(180deg, oklch(0.55 0.2 295) 0%, oklch(0.4 0.2 295) 100%);
+  color: white;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.ym-x {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ym-danger);
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+  background: linear-gradient(180deg, #fff 0%, #e8e8e8 100%);
+  border: 1px solid #888;
+  border-radius: 2px;
+  line-height: 1;
+}
+.ym-x:hover {
+  background: linear-gradient(180deg, #ffd8d8 0%, #ff8888 100%);
+  color: white;
+}
+
+/* Tabs (folder style) */
+.ym-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px 0 8px;
+  border-bottom: 2px solid oklch(0.4 0.2 295);
+  background: var(--ym-window);
+}
+.ym-tab {
+  padding: 5px 16px;
+  background: linear-gradient(180deg, #e8e4d4 0%, #c8c4b4 100%);
+  border-top: 1px solid #888;
+  border-left: 1px solid #888;
+  border-right: 1px solid #555;
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
+  cursor: pointer;
+  font-family: var(--ym-font);
+  font-size: 12px;
+  color: #333;
+  position: relative;
+  top: 1px;
+}
+.ym-tab[data-active="true"] {
+  background: linear-gradient(180deg, oklch(0.6 0.2 295) 0%, oklch(0.45 0.2 295) 100%);
+  color: white;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+  font-weight: bold;
+  top: 0;
+  padding-bottom: 6px;
+}
+
+/* Modal */
+.ym-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+/* Chat */
+.ym-bubble-user {
+  color: oklch(0.4 0.2 27);
+  font-weight: bold;
+}
+.ym-bubble-ai {
+  color: oklch(0.4 0.2 250);
+  font-weight: bold;
+}
+.ym-chat-line {
+  padding: 3px 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Markdown */
+.ym-md h1 { font-size: 18px; font-weight: bold; margin: 12px 0 6px; color: oklch(0.35 0.2 295); }
+.ym-md h2 { font-size: 15px; font-weight: bold; margin: 10px 0 5px; color: oklch(0.4 0.2 295); }
+.ym-md h3 { font-size: 13px; font-weight: bold; margin: 8px 0 4px; }
+.ym-md p  { margin: 6px 0; line-height: 1.45; }
+.ym-md ul { list-style: disc; padding-left: 22px; margin: 6px 0; }
+.ym-md ol { list-style: decimal; padding-left: 22px; margin: 6px 0; }
+.ym-md li { margin: 2px 0; }
+.ym-md code { background: #eee; padding: 1px 4px; border: 1px solid #ccc; font-family: "Courier New", monospace; }
+.ym-md strong { font-weight: bold; }
+.ym-md em { font-style: italic; }
+.ym-md hr { border: none; border-top: 1px dashed #888; margin: 10px 0; }
+.ym-md a { color: oklch(0.45 0.2 250); text-decoration: underline; }
+
+/* Blurry placeholder helper */
+.ym-blur-placeholder::placeholder {
+  filter: blur(1.2px);
+  color: #888;
+  font-style: italic;
+}
