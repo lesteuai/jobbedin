@@ -71,7 +71,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "JobbedIn — Yahoo-style Job Helper" },
+      { title: "JobbedIn" },
       { name: "description", content: "Resume + job analysis in classic Y!M style." },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
