@@ -1,0 +1,13 @@
+Link to the LangGraph: https://viewer.diagrams.net/?tags=%7B%7D&lightbox=1&highlight=0000ff&edit=_blank&layers=1&nav=1&dark=auto#R%3Cmxfile%3E%3Cdiagram%20name%3D%22Page-1%22%20id%3D%22eaLslpv7_gA_Ln5f9LRD%22%3E7Vpbd9o4EP41PIaju%2FFjShK2OadNT9M93T4KewxufastCtlfvxK2wRYbIBybsNm%2BBM3oYuebT6OZkQd0HK8muczmH1IfogFB%2FmpAbwaEEIRc%2FWM0T6UGj1xaamZ56Fe6reIx%2FBsqJaq0i9CHojVQpWmkwqyt9NIkAU%2B1dDLP02V7WJBG7admcgY7ikdPRrvar6Gv5qV2xNFW%2FweEs3n9ZIyqnljWgytFMZd%2Bumyo6O2AjvM0VWUrXo0hMujVuJTz7p7p3bxYDok6ZsI9GoVy8vAVxP1sMlngj%2Fh7ePUvq1SqQj3VGOTpIvHBLIMG9N1yHip4zKRnepfa7Fo3V3GkJayb5exfMlpUs98n2UIvfT0gItK%2F76a5bs1M6zMUixgGZKwn3KdTQxMovFIep3Emk6dqNcgVrBqvV%2F2HE0hjULkeheYNI4gK8eXWYNipdDUzHV7KG15W%2FbLiy2yz9BZS3ahQfQHCpH%2BENYmKQqtyCEA%2FRU%2FrCjXSRg3XYyrUKO4LNdo%2FajX7UADgT6X3oy%2FUGLVQI32hxs6CGsjcmxs%2FLPMZqLXv7XavWvhRZOGH%2BsLPKdcFf%2BdM2AU0XeQeHPasDeAh8a%2FNiaQlL5JFEXptrNuGgVWo%2FjLtIa%2Bkb9U4075ZNYbdPNVColFoTDLit2bfdtpaqudV52ppz4OurMGGw%2FatD8ocIqnCX21cG0bne2xaPeFTGiaq4cJHbVowZi1Rmqia1TwYrYWovT9da6ESmJ2F1hTb%2FNuns270m3X7WMcuinXcaZNlZ4ljWce4xTp6Xta5l8S6Exl0CluPZB29KNZtfNtz4eqxrBPYYp1zXtbVj%2B8zRJlAArlUsI5MdDiifyNQyjT6CVBc6yDqLb7DuMNNS97eUVGz60J2LbYiFHrqriVWBMzOfFZg0SHv6OvyzkFuk3lXaIgoPnTOGOkT5KEGUruRlwXNlxU100Mp%2FNHxi7UQs9%2Blb052GTaz1%2BWkYKzlDYeI0x4peWFucoeSl%2Bcm%2Fywgf5h%2BNwVmHUzIKUQ1bGVNM4xnhj65t1aLnwtT1NV0UaZKfW0epNcDP5RDPyy8NPdllg0TUzy5k0pJbx5rexZawhwxLhBzEEIudxyOSanlDiZ8hJkjRiPEXK61YSxnMMyS2YDerQMaIZEXYKwDHyFjEyWVf8Oi7Ju6gWv3zWPdxx0fHAf5TDDOOWWUYh5INxAO4a4MHFd7CTlimIhgql8FPIwCiUF4DmeOFwTWmiUGTU2Q5rE0PFrCNLP6fi5kFCpjsSgtighMJbM1oOYW5i6x377mp2ssX8NuDB6pliXeG6iaI8oCdMmOKEx%2B%2FDbnmzHn%2FlPDbfih6pjZn4voXEEdnYS8LLVgu6kFbWcWV4y07ymuhF2cOiK50GLDgb3k7uIM2drjl%2BvPX06C74TSsegrMyOdZmZoB%2BP%2Ffmp2USEH5tb136lVPIKshey7iZ6j4Dq76HOHPizUcze49zcfpDKXQa0rWyPcbS7VjLQtyXSzzze1%2F2ciP97bxSShXW70193npJdLosvKd7FdZj95p1vFHH7mGgxhHRLvlfPdt8c7jZ18agzIDA2KvYTqjJnUupJiZ67p1yFqN1dJ3cU%2BgogmOYcIi%2F0E1YJdUWmQFnPn%2F1w47M6RHvqco2%2B6dlnMro10Vk96LIFGF02gnerc0f7OugwV5z6JR8%2FzpauY%2B%2FbjzaCnnNgOZMQJn1Npcfvhaonr9vtfevsP%3C%2Fdiagram%3E%3C%2Fmxfile%3E
+
+class AgentState(TypedDict):
+    job: str                                            # The job being researched
+    company: str					# The company being researched
+    resume: str						# Turn pdf into string
+    company_result: str                                 # Output from ResearchCompany
+    JDMatch_result: str                                 # Output from CrossRef
+    feedback_result: str                                # Output from Feedback
+    cover_letter_result: str                            # Output from GenerateLetter
+    msg_result: str					# Output from GenerateMsg
+
+
