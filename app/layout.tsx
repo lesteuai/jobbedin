@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AppStoreProvider } from "@/lib/app-store";
+import { AppStoreProvider } from "@/app/lib/app-store";
 
 export const metadata: Metadata = {
   title: "JobbedIn",

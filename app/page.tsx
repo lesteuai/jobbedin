@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
-import { YmButton } from '@/components/ym/YmButton';
+import { YmButton } from '@/app/components/ym/YmButton';
 
 type Mode = 'signin' | 'signup' | 'forgot';
 

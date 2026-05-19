@@ -2,12 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { AppFrame } from "@/components/ym/AppFrame";
-import { Sidebar } from "@/components/ym/Sidebar";
-import { YmModal } from "@/components/ym/YmModal";
-import { YmButton } from "@/components/ym/YmButton";
-import { MarkdownPanel } from "@/components/ym/MarkdownPanel";
-import { useAppStore } from "@/lib/app-store";
+import { AppFrame } from "@/app/components/ym/AppFrame";
+import { Sidebar } from "@/app/components/ym/Sidebar";
+import { YmModal } from "@/app/components/ym/YmModal";
+import { YmButton } from "@/app/components/ym/YmButton";
+import { MarkdownPanel } from "@/app/components/ym/MarkdownPanel";
+import { useAppStore } from "@/app/lib/app-store";
 
 export default function ResumesPage() {
   const router = useRouter();
