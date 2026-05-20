@@ -1,4 +1,5 @@
 import { pgTable, uuid, text, pgEnum, json, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm/relations";
 
 export enum ProcessStatus {
 	Pending = 'pending',
@@ -214,3 +215,65 @@ export const process = pgTable('processes', {
 	updatedAt: timestamp('updated_at')
     .$onUpdate(() => new Date())
 });
+
+// Relations
+export const userRelations = relations(user, ({ many }) => ({
+  sessions: many(session),
+  accounts: many(account),
+  resumes: many(resume),
+  resumeJobs: many(resumeJob),
+}));
+
+export const sessionRelations = relations(session, ({ one }) => ({
+  user: one(user, { fields: [session.userId], references: [user.id] }),
+}));
+
+export const accountRelations = relations(account, ({ one }) => ({
+  user: one(user, { fields: [account.userId], references: [user.id] }),
+}));
+
+export const resumeRelations = relations(resume, ({ one, many }) => ({
+  user: one(user, { fields: [resume.userId], references: [user.id] }),
+  resumeJobs: many(resumeJob),
+}));
+
+export const resumeJobRelations = relations(resumeJob, ({ one, many }) => ({
+  user: one(user, { fields: [resumeJob.userId], references: [user.id] }),
+  resume: one(resume, { fields: [resumeJob.resumeId], references: [resume.id] }),
+  company: one(company, { fields: [resumeJob.id], references: [company.jobId] }),
+  jobDescriptionMatch: one(jobDescriptionMatch, { fields: [resumeJob.id], references: [jobDescriptionMatch.jobId] }),
+  resumeFeedback: one(resumeFeedback, { fields: [resumeJob.id], references: [resumeFeedback.jobId] }),
+  coverLetterHistory: one(coverLetterHistory, { fields: [resumeJob.id], references: [coverLetterHistory.jobId] }),
+  messageGenHistory: one(messageGenHistory, { fields: [resumeJob.id], references: [messageGenHistory.jobId] }),
+  processes: many(process),
+}));
+
+export const companyRelations = relations(company, ({ one }) => ({
+  user: one(user, { fields: [company.userId], references: [user.id] }),
+  resumeJob: one(resumeJob, { fields: [company.jobId], references: [resumeJob.id] }),
+}));
+
+export const jobDescriptionMatchRelations = relations(jobDescriptionMatch, ({ one }) => ({
+  user: one(user, { fields: [jobDescriptionMatch.userId], references: [user.id] }),
+  resumeJob: one(resumeJob, { fields: [jobDescriptionMatch.jobId], references: [resumeJob.id] }),
+}));
+
+export const resumeFeedbackRelations = relations(resumeFeedback, ({ one }) => ({
+  user: one(user, { fields: [resumeFeedback.userId], references: [user.id] }),
+  resumeJob: one(resumeJob, { fields: [resumeFeedback.jobId], references: [resumeJob.id] }),
+}));
+
+export const coverLetterHistoryRelations = relations(coverLetterHistory, ({ one }) => ({
+  user: one(user, { fields: [coverLetterHistory.userId], references: [user.id] }),
+  resumeJob: one(resumeJob, { fields: [coverLetterHistory.jobId], references: [resumeJob.id] }),
+}));
+
+export const messageGenHistoryRelations = relations(messageGenHistory, ({ one }) => ({
+  user: one(user, { fields: [messageGenHistory.userId], references: [user.id] }),
+  resumeJob: one(resumeJob, { fields: [messageGenHistory.jobId], references: [resumeJob.id] }),
+}));
+
+export const processRelations = relations(process, ({ one }) => ({
+  user: one(user, { fields: [process.userId], references: [user.id] }),
+  resumeJob: one(resumeJob, { fields: [process.jobId], references: [resumeJob.id] }),
+}));
