@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AppFrame } from "@/app/components/ym/AppFrame";
 import { Sidebar } from "@/app/components/ym/Sidebar";
 import { YmModal } from "@/app/components/ym/YmModal";
@@ -15,23 +15,58 @@ export default function ResumesPage() {
     resumes,
     selectedResumeId,
     selectResume,
-    addResume,
     deleteResume,
+    refreshResumes,
   } = useAppStore();
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selected = resumes.find((r) => r.id === selectedResumeId);
   const pendingName = resumes.find((r) => r.id === pendingDelete)?.name;
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.currentTarget.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/resumes', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Failed to upload resume');
+      const newResume = await res.json();
+
+      await refreshResumes();
+      selectResume(newResume.id);
+    } catch (err) {
+      console.error('Error uploading resume:', err);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <AppFrame>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.txt,.md"
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+      />
       <Sidebar
         title="Resumes"
-        addLabel="+ Add resume"
-        onAdd={() => {
-          const id = addResume();
-          selectResume(id);
-        }}
+        addLabel={isUploading ? "Uploading..." : "+ Add resume"}
+        onAdd={() => fileInputRef.current?.click()}
         items={resumes}
         selectedId={selectedResumeId}
         onSelect={selectResume}
@@ -60,7 +95,7 @@ export default function ResumesPage() {
               <div>
                 <div style={{ fontSize: 36 }}>📄</div>
                 <p>Select a resume from the left, or click <b>+ Add resume</b>.</p>
-                <p style={{ fontSize: 11 }}>(Supports .pdf and .docx — mock)</p>
+                <p style={{ fontSize: 11 }}>(Supports .pdf, .txt, .md)</p>
               </div>
             </div>
           </>
