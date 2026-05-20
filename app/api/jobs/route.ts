@@ -1,0 +1,68 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/app/lib/db';
+import { resumeJob } from '@/app/lib/db/schema';
+import { eq, count } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
+
+export async function GET(request: NextRequest) {
+  const resumeId = request.nextUrl.searchParams.get('resumeId');
+
+  if (!resumeId) {
+    return NextResponse.json(
+      { error: 'resumeId query parameter is required' },
+      { status: 400 }
+    );
+  }
+
+  const jobs = await db
+    .select({
+      id: resumeJob.id,
+      name: resumeJob.name,
+      content: resumeJob.content,
+      resumeId: resumeJob.resumeId,
+      createdAt: resumeJob.createdAt,
+    })
+    .from(resumeJob)
+    .where(eq(resumeJob.resumeId, resumeId))
+    .orderBy(resumeJob.createdAt);
+
+  return NextResponse.json(jobs);
+}
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const { resumeId, content } = body;
+
+  if (!resumeId || !content) {
+    return NextResponse.json(
+      { error: 'resumeId and content are required' },
+      { status: 400 }
+    );
+  }
+
+  const existingCount = await db
+    .select({ count: count() })
+    .from(resumeJob)
+    .where(eq(resumeJob.resumeId, resumeId));
+
+  const jobNumber = (existingCount[0]?.count || 0) + 1;
+  const name = `Job ${jobNumber}`;
+
+  const newJob = await db
+    .insert(resumeJob)
+    .values({
+      id: randomUUID(),
+      resumeId,
+      name,
+      content,
+    })
+    .returning({
+      id: resumeJob.id,
+      name: resumeJob.name,
+      content: resumeJob.content,
+      resumeId: resumeJob.resumeId,
+      createdAt: resumeJob.createdAt,
+    });
+
+  return NextResponse.json(newJob[0], { status: 201 });
+}
