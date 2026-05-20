@@ -1,7 +1,0 @@
-In the moment, this app is an empty shell with default data.
-Create the backend for this app that does the following:
-- In resume screen, "Add resume" uploads PDF or txt or md to table "resume". Delete resume also deletes it from the table.
-- Choose a resume, press "To job". In job screen, "Add job" is a text box with its content saved to table "resumeJob" connected to "resume" with resume id. Delete also deletes job from the "resumeJob" table. 
-- In "Add job", the OK button should only save the job description, not jump to analyze yet.
-- For now, when press "analyze", that job's "company", "jobDescriptionMatch", "resumeFeedback" will be filled with static data found in the frontend now moved to backend. Add process in table "process" as "company", "jobDescriptionMatch", "resumeFeedback" get "done" status, "letter" and "message" as "done".
-- In Generate, it is 2 chatbots with their content saved to "coverLetterHistory" and "messageGenHistory". Data from frontend is to be moved to backend and pretend the same functionality
