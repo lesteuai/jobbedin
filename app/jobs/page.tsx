@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppFrame } from '@/app/components/ym/AppFrame';
 import { Sidebar } from '@/app/components/ym/Sidebar';
 import { YmModal } from '@/app/components/ym/YmModal';
@@ -15,106 +15,6 @@ type Tab = (typeof TABS)[number];
 type Mode = 'letter' | 'message';
 type ChatLine = { role: 'user' | 'ai'; text: string };
 
-const MOCK: Record<Exclude<Tab, 'Generate'>, string> = {
-  Company: `# X
-
-**Industry:** Digital X Health
-**Founded:** 2014 · **HQ:** Washington, DC · **Size:** ~80 employees
-**Funding:** Series B — $14M (Y Innovation Fund)
-
-## What they do
-X builds a virtual care platform for pregnant patients, used by
-30+ health systems across the US. Their app delivers risk-screening
-content, remote BP monitoring, and care-team alerts.
-
-## Why they're hiring
-- Expanding the **AI-assisted triage** product line
-- Recently shipped LLM summarization for clinician notes
-- Growing the engineering team after a CMS reimbursement win
-
-## Culture signals
-- Mission-driven, clinical-evidence first
-- Remote-friendly, async-heavy
-- Founders publish in *NEJM Catalyst* — value writing skills`,
-
-  JDMatch: `# Match score: **82 / 100** 🎯
-
-| Requirement | Resume evidence | Verdict |
-|---|---|---|
-| 4+ yrs TypeScript / React | Acme Corp 2022→Present, Globex 2019–2022 | ✅ Strong |
-| Ship LLM features | "Shipped 3 AI agent products" | ✅ Strong |
-| Postgres + cloud | Listed in Skills (Postgres, AWS) | ✅ OK |
-| Clear writing & ownership | Not directly evidenced | ⚠ Gap |
-| Health-tech background | Not mentioned | ⚠ Gap |
-
-## Recommended emphasis
-1. Lead with the **3 shipped AI agents** — it's their exact roadmap.
-2. Quote a metric from your TypeScript migration (40k LoC).
-3. Bridge the health-tech gap with mission language.`,
-
-  Feedback: `# Resume critique
-
-## What's working
-- Clean structure, scannable in <10 seconds
-- Verb-led bullets ("Shipped", "Led")
-- Skills section maps cleanly to the JD
-
-## Fix these
-1. **Quantify outcomes** — "Shipped 3 AI agent products" → add users, latency, or revenue impact.
-2. **Tighten the Globex line** — "Led migration to TypeScript across 40k LoC" is great; add the team size.
-3. **No summary at top** — add a 2-line tagline that says *what kind of engineer you are*.
-4. **Education section is dead weight** — move below Skills or drop the year.
-
-## Nits
-- "Senior Engineer" appears twice; consider "Staff" if scope warrants.
-- Drop the github URL from the header — put it under contact icons.`,
-};
-
-const SEED: Record<Mode, ChatLine[]> = {
-  letter: [
-    { role: 'user', text: 'Write to hiring manager.' },
-    {
-      role: 'ai',
-      text: `Subject: Software Engineer Application
-
-Dear Hiring Manager,
-
-X mortality is a solvable problem. X is one of the few
-organizations treating it that way — building data-driven, clinically
-validated tools that meet patients where they are. That's why I'm writing.
-
-Over the last three years I've shipped three AI-agent products to
-production, including an autonomous research assistant used daily by a
-50-person team. I'd love to bring that same shipping cadence to your
-LLM-assisted triage roadmap.
-
-Best,
-Jane`,
-    },
-  ],
-  message: [
-    {
-      role: 'user',
-      text:
-        'Write to the founder. Stress on the 2 AI projects I did, plus I\'m planning to work on an email generator so this is perfect opportunity.',
-    },
-    {
-      role: 'ai',
-      text: `Hi [Founder of Company],
-
-I built two AI agents from scratch and shipped them to production.
-AuTuber is an agentic stagehand for YouTube creators (12k MAU); the
-second is an internal research assistant our team uses daily.
-
-I'm currently prototyping an email generator — which is exactly the
-problem space your new role touches. Would love 15 minutes to compare
-notes.
-
-— Jane`,
-    },
-  ],
-};
-
 const PLACEHOLDER: Record<Mode, string> = {
   letter: 'Tell me how you want your letter to be like: tone, content highlights, etc',
   message: 'Tell me how you want your message to look like: tone, content highlights, etc',
@@ -127,11 +27,18 @@ export default function JobsPage() {
   const [view, setView] = useState<View>('idle');
   const [draft, setDraft] = useState('');
 
-  // Report state
+  const [analysisData, setAnalysisData] = useState<{
+    company: string | null;
+    jdMatch: string | null;
+    feedback: string | null;
+  } | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   const [tab, setTab] = useState<Tab>('Company');
   const [mode, setMode] = useState<Mode>('letter');
-  const [chats, setChats] = useState<Record<Mode, ChatLine[]>>(SEED);
+  const [chats, setChats] = useState<Record<Mode, ChatLine[]>>({ letter: [], message: [] });
   const [chatDraft, setChatDraft] = useState('');
+  const [chatsLoaded, setChatsLoaded] = useState(false);
 
   const selected = jobs.find((j) => j.id === selectedJobId);
   const pendingName = jobs.find((j) => j.id === pendingDelete)?.name;
@@ -142,32 +49,116 @@ export default function JobsPage() {
     selectJob(id);
   };
 
+  useEffect(() => {
+    setAnalysisData(null);
+  }, [selectedJobId]);
+
+  useEffect(() => {
+    if (tab !== 'Generate' || !selectedJobId) {
+      return;
+    }
+
+    const loadChats = async () => {
+      try {
+        const [letterRes, messageRes] = await Promise.all([
+          fetch(`/api/jobs/${selectedJobId}/chat?mode=letter`),
+          fetch(`/api/jobs/${selectedJobId}/chat?mode=message`),
+        ]);
+
+        if (!letterRes.ok || !messageRes.ok) {
+          throw new Error('Failed to load chat history');
+        }
+
+        const letterData = await letterRes.json();
+        const messageData = await messageRes.json();
+
+        setChats({
+          letter: letterData.conversation || [],
+          message: messageData.conversation || [],
+        });
+        setChatsLoaded(true);
+      } catch (err) {
+        console.error('Error loading chats:', err);
+      }
+    };
+
+    loadChats();
+  }, [selectedJobId, tab]);
+
   const lines = chats[mode];
   const canSend = chatDraft.trim().length > 0;
   const canClear = lines.length > 0;
 
-  const handleSend = () => {
-    if (!canSend) return;
-    setChats((p) => ({
-      ...p,
-      [mode]: [
-        ...p[mode],
-        { role: 'user', text: chatDraft.trim() },
-        {
-          role: 'ai',
-          text:
-            mode === 'letter'
-              ? '(Mock AI) Sure — here\'s a revised cover letter draft based on your notes...\n\nDear Hiring Manager,\n...'
-              : '(Mock AI) Got it — here\'s a punchier outreach message...\n\nHi [Name],\n...',
-        },
-      ],
-    }));
+  const handleSend = async () => {
+    if (!canSend || !selectedJobId) return;
+
+    const updatedLines = [
+      ...lines,
+      { role: 'user' as const, text: chatDraft.trim() },
+      {
+        role: 'ai' as const,
+        text:
+          mode === 'letter'
+            ? '(Mock AI) Sure — here\'s a revised cover letter draft based on your notes...\n\nDear Hiring Manager,\n...'
+            : '(Mock AI) Got it — here\'s a punchier outreach message...\n\nHi [Name],\n...',
+      },
+    ];
+
+    setChats((p) => ({ ...p, [mode]: updatedLines }));
     setChatDraft('');
+
+    try {
+      await fetch(`/api/jobs/${selectedJobId}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode, conversation: updatedLines }),
+      });
+    } catch (err) {
+      console.error('Error saving chat:', err);
+    }
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
+    if (!selectedJobId) return;
+
     setChats((p) => ({ ...p, [mode]: [] }));
     setChatDraft('');
+
+    try {
+      await fetch(`/api/jobs/${selectedJobId}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode, conversation: [] }),
+      });
+    } catch (err) {
+      console.error('Error clearing chat:', err);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!selectedJobId) return;
+
+    setIsAnalyzing(true);
+    try {
+      await fetch(`/api/jobs/${selectedJobId}/analyze`, { method: 'POST' });
+
+      const res = await fetch(`/api/jobs/${selectedJobId}/analysis`);
+      if (!res.ok) throw new Error('Failed to fetch analysis');
+
+      const data = await res.json();
+      setAnalysisData({
+        company: data.company,
+        jdMatch: data.jdMatch,
+        feedback: data.feedback,
+      });
+
+      setView('report');
+      setTab('Company');
+    } catch (err) {
+      console.error('Error analyzing job:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   return (
@@ -222,7 +213,15 @@ export default function JobsPage() {
 
             <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {tab !== 'Generate' ? (
-                <MarkdownPanel>{MOCK[tab]}</MarkdownPanel>
+                analysisData?.[tab === 'Company' ? 'company' : tab === 'JDMatch' ? 'jdMatch' : 'feedback'] ? (
+                  <MarkdownPanel>
+                    {analysisData[tab === 'Company' ? 'company' : tab === 'JDMatch' ? 'jdMatch' : 'feedback'] || ''}
+                  </MarkdownPanel>
+                ) : isAnalyzing ? (
+                  <div style={{ color: '#666', fontStyle: 'italic' }}>Analyzing...</div>
+                ) : (
+                  <div style={{ color: '#666', fontStyle: 'italic' }}>Click Analyze to generate analysis.</div>
+                )
               ) : (
                 <>
                   <div
@@ -342,11 +341,11 @@ export default function JobsPage() {
                     variant="primary"
                     disabled={!draft.trim()}
                     onClick={() => {
-                      const id = addJob(draft.trim());
-                      selectJob(id);
-                      setDraft('');
-                      setView('report');
-                      setTab('Company');
+                      addJob(draft.trim()).then((id) => {
+                        selectJob(id);
+                        setDraft('');
+                        setView('view');
+                      });
                     }}
                   >
                     OK
@@ -362,12 +361,10 @@ export default function JobsPage() {
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                   <YmButton
                     variant="primary"
-                    onClick={() => {
-                      setTab('Company');
-                      setView('report');
-                    }}
+                    disabled={isAnalyzing}
+                    onClick={handleAnalyze}
                   >
-                    Analyze →
+                    {isAnalyzing ? 'Analyzing...' : 'Analyze →'}
                   </YmButton>
                 </div>
               </>
