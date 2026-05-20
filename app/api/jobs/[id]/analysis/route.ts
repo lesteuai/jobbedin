@@ -1,12 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
-import { company, jobDescriptionMatch, resumeFeedback, process as processTable } from '@/app/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { company, jobDescriptionMatch, resumeFeedback, process as processTable, resumeJob } from '@/app/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { auth } from '@/app/lib/auth';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth.api.getSession({ headers: request.headers });
+
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { id: jobId } = await params;
 
   try {
+    const job = await db
+      .select()
+      .from(resumeJob)
+      .where(and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)));
+
+    if (job.length === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const [companyRow] = await db.select().from(company).where(eq(company.jobId, jobId));
     const [jdMatchRow] = await db.select().from(jobDescriptionMatch).where(eq(jobDescriptionMatch.jobId, jobId));
     const [feedbackRow] = await db.select().from(resumeFeedback).where(eq(resumeFeedback.jobId, jobId));

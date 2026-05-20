@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
-import { coverLetterHistory, messageGenHistory } from '@/app/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { coverLetterHistory, messageGenHistory, resumeJob } from '@/app/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { auth } from '@/app/lib/auth';
 
 type ChatLine = {
   role: 'user' | 'ai';
@@ -12,6 +13,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth.api.getSession({ headers: request.headers });
+
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { id: jobId } = await params;
     const mode = request.nextUrl.searchParams.get('mode') as 'letter' | 'message' | null;
@@ -21,6 +28,15 @@ export async function GET(
         { error: 'Invalid mode parameter. Must be "letter" or "message"' },
         { status: 400 }
       );
+    }
+
+    const job = await db
+      .select()
+      .from(resumeJob)
+      .where(and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)));
+
+    if (job.length === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
     const table = mode === 'letter' ? coverLetterHistory : messageGenHistory;
@@ -45,6 +61,12 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth.api.getSession({ headers: request.headers });
+
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { id: jobId } = await params;
     const body = await request.json();
@@ -67,10 +89,19 @@ export async function POST(
       );
     }
 
+    const job = await db
+      .select()
+      .from(resumeJob)
+      .where(and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)));
+
+    if (job.length === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const table = mode === 'letter' ? coverLetterHistory : messageGenHistory;
 
     await db.delete(table).where(eq(table.jobId, jobId));
-    await db.insert(table).values({ jobId, conversation });
+    await db.insert(table).values({ jobId, userId: session.user.id, conversation });
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -2,9 +2,16 @@
 
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { authClient } from "@/app/lib/auth-client";
 
 export function AppFrame({ children }: { children: ReactNode }) {
   const router = useRouter();
+
+  async function handleSignOut() {
+    await authClient.signOut();
+    router.push("/");
+  }
+
   return (
     <div
       style={{
@@ -32,7 +39,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
 
         <button
           className="ym-btn"
-          onClick={() => router.push("/")}
+          onClick={handleSignOut}
           style={{
             position: "absolute",
             top: 32,

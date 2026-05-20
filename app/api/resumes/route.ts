@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { resume } from '@/app/lib/db/schema';
-import { desc } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { PDFParse } from 'pdf-parse';
+import { auth } from '@/app/lib/auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const session = await auth.api.getSession({ headers: request.headers });
+
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const resumes = await db
     .select({
       id: resume.id,
@@ -13,12 +20,19 @@ export async function GET() {
       createdAt: resume.createdAt,
     })
     .from(resume)
+    .where(eq(resume.userId, session.user.id))
     .orderBy(desc(resume.createdAt));
 
   return NextResponse.json(resumes);
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth.api.getSession({ headers: request.headers });
+
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const formData = await request.formData();
   const file = formData.get('file') as File;
 
@@ -60,6 +74,7 @@ export async function POST(request: NextRequest) {
 
   const newResume = await db.insert(resume).values({
     id,
+    userId: session.user.id,
     name: nameWithoutExtension,
     content,
   }).returning();

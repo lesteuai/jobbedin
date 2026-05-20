@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
-import { company, jobDescriptionMatch, resumeFeedback, process as processTable, ProcessType, ProcessStatus } from '@/app/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { company, jobDescriptionMatch, resumeFeedback, process as processTable, ProcessType, ProcessStatus, resumeJob } from '@/app/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
+import { auth } from '@/app/lib/auth';
 
 const MOCK_DATA = {
   company: `# X
@@ -60,9 +61,24 @@ content, remote BP monitoring, and care-team alerts.
 };
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth.api.getSession({ headers: request.headers });
+
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { id: jobId } = await params;
 
   try {
+    const job = await db
+      .select()
+      .from(resumeJob)
+      .where(and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)));
+
+    if (job.length === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     await db.delete(company).where(eq(company.jobId, jobId));
     await db.delete(jobDescriptionMatch).where(eq(jobDescriptionMatch.jobId, jobId));
     await db.delete(resumeFeedback).where(eq(resumeFeedback.jobId, jobId));
@@ -70,18 +86,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     await db.insert(company).values({
       id: crypto.randomUUID(),
+      userId: session.user.id,
       jobId,
       content: MOCK_DATA.company,
     });
 
     await db.insert(jobDescriptionMatch).values({
       id: crypto.randomUUID(),
+      userId: session.user.id,
       jobId,
       content: MOCK_DATA.jdMatch,
     });
 
     await db.insert(resumeFeedback).values({
       id: crypto.randomUUID(),
+      userId: session.user.id,
       jobId,
       content: MOCK_DATA.feedback,
     });
@@ -90,6 +109,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     for (const type of processTypes) {
       await db.insert(processTable).values({
         id: crypto.randomUUID(),
+        userId: session.user.id,
         jobId,
         processType: type,
         status: ProcessStatus.Done,

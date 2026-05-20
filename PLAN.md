@@ -17,7 +17,7 @@ Integrate better-auth for real login/logout/signup, add userId to all existing d
 - Run `pnpm db:generate` to generate the migration file for the schema changes.
 
 ### Task 2: Configure better-auth
-**Status**: pending
+**Status**: done
 **Goal**: Create auth server config, auth client, and the Next.js API handler for better-auth.
 **Depends on**: Task 1
 **Details**:
@@ -28,7 +28,7 @@ Integrate better-auth for real login/logout/signup, add userId to all existing d
 - The `db` import for auth.ts comes from `@/app/lib/db` and the schema tables from `@/app/lib/db/schema`.
 
 ### Task 3: Route protection middleware
-**Status**: pending
+**Status**: done
 **Goal**: Add Next.js middleware to redirect unauthenticated users from protected routes.
 **Depends on**: Task 2
 **Details**:

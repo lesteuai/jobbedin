@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { resumeJob } from '@/app/lib/db/schema';
-import { eq, count } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { auth } from '@/app/lib/auth';
 
 export async function GET(request: NextRequest) {
+  const session = await auth.api.getSession({ headers: request.headers });
+
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const resumeId = request.nextUrl.searchParams.get('resumeId');
 
   if (!resumeId) {
@@ -23,13 +30,19 @@ export async function GET(request: NextRequest) {
       createdAt: resumeJob.createdAt,
     })
     .from(resumeJob)
-    .where(eq(resumeJob.resumeId, resumeId))
+    .where(and(eq(resumeJob.resumeId, resumeId), eq(resumeJob.userId, session.user.id)))
     .orderBy(resumeJob.createdAt);
 
   return NextResponse.json(jobs);
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth.api.getSession({ headers: request.headers });
+
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const body = await request.json();
   const { resumeId, content } = body;
 
@@ -52,6 +65,7 @@ export async function POST(request: NextRequest) {
     .insert(resumeJob)
     .values({
       id: randomUUID(),
+      userId: session.user.id,
       resumeId,
       name,
       content,
