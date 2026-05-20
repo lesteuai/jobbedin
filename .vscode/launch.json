@@ -1,0 +1,23 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Debug Next.js dev server",
+			"type": "node",
+			"request": "launch",
+			"runtimeExecutable": "npm",
+			"runtimeArgs": ["run", "dev"],
+			"cwd": "${workspaceFolder}",
+			"sourceMaps": true,
+			"resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
+			"skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+			"env": {
+				"NODE_OPTIONS": "--inspect"
+			},
+			"sourceMapPathOverrides": {
+				"/@fs/*": "/*",
+				"*": "*"
+			}
+		}
+	]
+}
