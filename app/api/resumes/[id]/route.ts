@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
-import { resumeJob } from '@/app/lib/db/schema';
+import { resume } from '@/app/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function DELETE(
@@ -9,7 +9,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  await db.delete(resumeJob).where(eq(resumeJob.id, id));
+  await db.delete(resume).where(eq(resume.id, id));
 
   return NextResponse.json({ success: true });
 }
