@@ -36,6 +36,13 @@
       "when": 1779254931118,
       "tag": "0004_colorful_klaw",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779259055279,
+      "tag": "0005_shallow_shaman",
+      "breakpoints": true
     }
   ]
 }
