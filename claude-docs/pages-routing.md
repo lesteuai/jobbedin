@@ -198,7 +198,7 @@ User action
 **Internal:**
 - `app/layout.tsx` → AppStoreProvider
 - `lib/app-store.tsx` → useAppStore()
-- `components/ym/*` → UI primitives
+- `app/components/ym/*` → UI primitives
 - `app/globals.css` → Styling
 
 **External:**

@@ -2,11 +2,11 @@
 
 ## Purpose
 
-The AppStore context (`lib/app-store.tsx`) provides global state for managing resumes and jobs across pages. It exposes a React Context with CRUD operations, allowing pages to read and mutate items without prop drilling.
+The AppStore context (`app/lib/app-store.tsx`) provides global state for managing resumes and jobs across pages. It exposes a React Context with CRUD operations, allowing pages to read and mutate items without prop drilling.
 
 ## Location
 
-- `lib/app-store.tsx` — Context definition, provider component, and hook
+- `app/lib/app-store.tsx` — Context definition, provider component, and hook
 - Used by: `app/resumes/page.tsx`, `app/jobs/page.tsx`
 
 ## Entry Points

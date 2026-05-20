@@ -2,11 +2,11 @@
 
 ## Purpose
 
-The UI component library under `components/ym/` provides a cohesive Yahoo Messenger (2000s) design aesthetic across all pages. Components are stateless, styling-driven primitives that enforce a consistent visual language and interaction model.
+The UI component library under `app/components/ym/` provides a cohesive Yahoo Messenger (2000s) design aesthetic across all pages. Components are stateless, styling-driven primitives that enforce a consistent visual language and interaction model.
 
 ## Location
 
-- `components/ym/` — All Yahoo Messenger UI primitives
+- `app/components/ym/` — All Yahoo Messenger UI primitives
   - `AppFrame.tsx` — Main app shell
   - `YmButton.tsx` — Styled button with variants
   - `YmModal.tsx` — Modal dialog with confirm/cancel
@@ -16,11 +16,11 @@ The UI component library under `components/ym/` provides a cohesive Yahoo Messen
 
 ## Entry Points
 
-- `components/ym/AppFrame.tsx` — Wraps every app-interior page with titlebar and sign-out button
-- `components/ym/YmButton.tsx` — Use for all interactive buttons
-- `components/ym/YmModal.tsx` — Use for confirmation dialogs or blocking modals
-- `components/ym/Sidebar.tsx` — Use for list-based navigation (resumes/jobs)
-- `components/ym/MarkdownPanel.tsx` — Use for rendering formatted text content
+- `app/components/ym/AppFrame.tsx` — Wraps every app-interior page with titlebar and sign-out button
+- `app/components/ym/YmButton.tsx` — Use for all interactive buttons
+- `app/components/ym/YmModal.tsx` — Use for confirmation dialogs or blocking modals
+- `app/components/ym/Sidebar.tsx` — Use for list-based navigation (resumes/jobs)
+- `app/components/ym/MarkdownPanel.tsx` — Use for rendering formatted text content
 
 ## Architecture / Key Components
 
