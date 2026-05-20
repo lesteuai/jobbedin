@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 
 export type Item = { id: string; name: string; content: string };
 
@@ -10,67 +10,99 @@ type Store = {
   selectedResumeId: string | null;
   selectedJobId: string | null;
   addResume: (name?: string) => string;
-  addJob: (content: string) => string;
-  deleteResume: (id: string) => void;
-  deleteJob: (id: string) => void;
+  addJob: (content: string) => Promise<string>;
+  deleteResume: (id: string) => Promise<void>;
+  deleteJob: (id: string) => Promise<void>;
   selectResume: (id: string | null) => void;
   selectJob: (id: string | null) => void;
+  refreshResumes: () => Promise<void>;
 };
 
 const Ctx = createContext<Store | null>(null);
 
-const SAMPLE_RESUME = `# Jane Doe
-**Software Engineer** · jane@example.com · github.com/janedoe
-
-## Experience
-- **Acme Corp** — Senior Engineer (2022–Present). Shipped 3 AI agent products.
-- **Globex** — Engineer (2019–2022). Led migration to TypeScript across 40k LoC.
-
-## Skills
-TypeScript, React, Python, LLM tooling, Postgres, AWS.
-
-## Education
-B.S. Computer Science, State University, 2019.`;
-
-const SAMPLE_JOB = `Senior Full-Stack Engineer — X (Remote)
-
-We're building data-driven X-health software. Looking for engineers with:
-- 4+ years TypeScript / React
-- Experience shipping LLM-powered features
-- Comfort with Postgres + cloud infra
-- Bias toward clear writing and ownership`;
-
 export function AppStoreProvider({ children }: { children: ReactNode }) {
-  const [resumes, setResumes] = useState<Item[]>([
-    { id: "r1", name: "Resume 1", content: SAMPLE_RESUME },
-    { id: "r2", name: "Resume 2", content: SAMPLE_RESUME.replace("Jane Doe", "Alex Park") },
-  ]);
-  const [jobs, setJobs] = useState<Item[]>([
-    { id: "j1", name: "Job 1", content: SAMPLE_JOB },
-    { id: "j2", name: "Job 2", content: SAMPLE_JOB.replace("X", "Northwind Labs") },
-  ]);
+  const [resumes, setResumes] = useState<Item[]>([]);
+  const [jobs, setJobs] = useState<Item[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
-  const addResume = (name?: string) => {
-    const id = `r${Date.now()}`;
-    const n = name ?? `Resume ${resumes.length + 1}`;
-    setResumes((p) => [...p, { id, name: n, content: SAMPLE_RESUME }]);
-    return id;
+  const refreshResumes = async () => {
+    try {
+      const res = await fetch('/api/resumes');
+      if (!res.ok) throw new Error('Failed to fetch resumes');
+      const data = await res.json();
+      setResumes(data);
+    } catch (err) {
+      console.error('Error refreshing resumes:', err);
+    }
   };
-  const addJob = (content: string) => {
-    const id = `j${Date.now()}`;
-    const n = `Job ${jobs.length + 1}`;
-    setJobs((p) => [...p, { id, name: n, content }]);
-    return id;
+
+  useEffect(() => {
+    refreshResumes();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedResumeId) {
+      setJobs([]);
+      return;
+    }
+    const fetchJobs = async () => {
+      try {
+        const res = await fetch(`/api/jobs?resumeId=${selectedResumeId}`);
+        if (!res.ok) throw new Error('Failed to fetch jobs');
+        const data = await res.json();
+        setJobs(data);
+      } catch (err) {
+        console.error('Error fetching jobs:', err);
+      }
+    };
+    fetchJobs();
+  }, [selectedResumeId]);
+
+  const addResume = () => {
+    return '';
   };
-  const deleteResume = (id: string) => {
-    setResumes((p) => p.filter((x) => x.id !== id));
-    if (selectedResumeId === id) setSelectedResumeId(null);
+
+  const addJob = async (content: string) => {
+    if (!selectedResumeId) throw new Error('No resume selected');
+    try {
+      const res = await fetch('/api/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeId: selectedResumeId, content }),
+      });
+      if (!res.ok) throw new Error('Failed to add job');
+      const newJob = await res.json();
+      setJobs((p) => [...p, newJob]);
+      return newJob.id;
+    } catch (err) {
+      console.error('Error adding job:', err);
+      throw err;
+    }
   };
-  const deleteJob = (id: string) => {
-    setJobs((p) => p.filter((x) => x.id !== id));
-    if (selectedJobId === id) setSelectedJobId(null);
+
+  const deleteResume = async (id: string) => {
+    try {
+      const res = await fetch(`/api/resumes/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete resume');
+      setResumes((p) => p.filter((x) => x.id !== id));
+      if (selectedResumeId === id) setSelectedResumeId(null);
+    } catch (err) {
+      console.error('Error deleting resume:', err);
+      throw err;
+    }
+  };
+
+  const deleteJob = async (id: string) => {
+    try {
+      const res = await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete job');
+      setJobs((p) => p.filter((x) => x.id !== id));
+      if (selectedJobId === id) setSelectedJobId(null);
+    } catch (err) {
+      console.error('Error deleting job:', err);
+      throw err;
+    }
   };
 
   return (
@@ -86,6 +118,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         deleteJob,
         selectResume: setSelectedResumeId,
         selectJob: setSelectedJobId,
+        refreshResumes,
       }}
     >
       {children}
