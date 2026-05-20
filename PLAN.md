@@ -38,7 +38,7 @@ Integrate better-auth for real login/logout/signup, add userId to all existing d
 - The matcher config should include `/resumes` and `/jobs` (and their sub-paths).
 
 ### Task 4: Update API routes for auth
-**Status**: pending
+**Status**: done
 **Goal**: Validate auth session in all API routes and scope data to the authenticated user.
 **Depends on**: Task 2
 **Details**:
