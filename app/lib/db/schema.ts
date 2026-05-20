@@ -32,6 +32,7 @@ export const processTypeEnum = pgEnum('process_type', [
 
 export const resume = pgTable('resumes', {
   id: uuid('id').primaryKey(),
+  name: text('name'),
   content: text('content'),
 	createdAt: timestamp('created_at').defaultNow(),
 	updatedAt: timestamp('updated_at')
@@ -42,6 +43,7 @@ export const resumeJob = pgTable('resume_jobs', {
   resumeId: uuid('resume_id')
     .notNull()
     .references(() => resume.id, {onDelete: 'cascade'}),
+  name: text('name'),
   content: text('content'),
 	createdAt: timestamp('created_at').defaultNow(),
 	updatedAt: timestamp('updated_at')
@@ -79,6 +81,7 @@ export const resumeFeedback = pgTable('resume_feedbacks', {
 
 export const coverLetterHistory = pgTable('cover_letter_history', {
   jobId: uuid('job_id')
+      .primaryKey()
       .notNull()
       .references(() => resumeJob.id, {onDelete: 'cascade'}),
   conversation: json('conversation'),
@@ -88,6 +91,7 @@ export const coverLetterHistory = pgTable('cover_letter_history', {
 
 export const messageGenHistory = pgTable('message_gen_history', {
   jobId: uuid('job_id')
+      .primaryKey()
       .notNull()
       .references(() => resumeJob.id, {onDelete: 'cascade'}),
   conversation: json('conversation'),

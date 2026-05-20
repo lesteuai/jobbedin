@@ -29,6 +29,13 @@
       "when": 1779253567577,
       "tag": "0003_amusing_stick",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779254931118,
+      "tag": "0004_colorful_klaw",
+      "breakpoints": true
     }
   ]
 }
