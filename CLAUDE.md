@@ -6,7 +6,7 @@ An AI-assisted job application tool that researches companies and generates pers
 
 JobbedIn helps job seekers apply more effectively by automating research and personalization. It ingests a resume and job description, deploys agents to research the target company, cross-references candidate experience against job requirements, critiques the resume, and generates a comprehensive analysis report. Based on these findings, it drafts personalized cover letters and 100-word recruitment summaries.
 
-The application prioritizes Computer Science roles as its domain of expertise.
+CS-focused job application assistant with AI-powered analysis workflow.
 
 ## Architecture Overview
 
@@ -14,8 +14,8 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 
 **Data flow:**
 1. User signs in/up on the login page via better-auth (email/password authentication)
-2. Middleware validates session; unauthenticated requests to /resumes or /jobs redirect to /
-3. User uploads/selects resumes on /resumes page (scoped to their userId)
+2. User navigates to /resumes or /jobs pages; API calls validate session and return 401 if not authenticated
+3. User uploads resumes (PDF, TXT, MD) on /resumes page (scoped to their userId); PDF content is extracted via pdf-parse
 4. User navigates to /jobs to add job descriptions (pasted as text; scoped to their userId)
 5. System displays job analysis tabs: Company research, JD match scoring, resume feedback, and AI chat for iterative generation of cover letters and messages
 6. UI renders mock analysis data and provides chat interface for refining outputs
@@ -23,23 +23,23 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 
 **Key architectural layers:**
 - **Frontend**: Client-side React components with `use client` directives (all user-facing pages and interactive components)
-- **Authentication**: better-auth with email/password flow and Drizzle ORM adapter; session validation via Next.js middleware
+- **Authentication**: better-auth 1.6.11 with email/password flow and Drizzle ORM adapter; session validation via API route handlers (removed Next.js middleware)
 - **State management**: React Context (AppStore) for cross-page state synchronization; synced to backend API on mount and after mutations
 - **Styling**: Tailwind CSS v4 with unified Yahoo Messenger design system (`ym-` class prefix)
 - **Backend database**: PostgreSQL with Drizzle ORM for type-safe schema and migrations
-- **API layer**: Next.js App Router API routes for resume/job CRUD, analysis data insertion, and chat persistence; all routes validate session and scope data to userId
+- **API layer**: Next.js App Router API routes for resume/job CRUD, analysis data insertion, and chat persistence; all routes validate session via `auth.api.getSession()` and scope data to userId
+- **File handling**: PDF extraction via pdf-parse; TXT and Markdown files read as plain text
 - **AI processing**: Planned LangGraph agents and OpenAI API integration
 
 ## Key Entry Points
 
 - `app/layout.tsx` — Root layout with metadata and AppStoreProvider wrapper
 - `app/page.tsx` — Login page with better-auth sign-in/sign-up integration
-- `app/resumes/page.tsx` — Resume management and preview (protected by middleware; userId-scoped)
-- `app/jobs/page.tsx` — Job management, analysis tabs, and AI generation chat interface (protected; userId-scoped)
+- `app/resumes/page.tsx` — Resume management and preview (API-protected; userId-scoped)
+- `app/jobs/page.tsx` — Job management, analysis tabs, and AI generation chat interface (API-protected; userId-scoped)
 - `app/lib/app-store.tsx` — React Context providing global resume/job state and CRUD operations
 - `app/lib/auth.ts` — better-auth server configuration with Drizzle ORM adapter
 - `app/lib/auth-client.ts` — better-auth client exports (signIn, signUp, signOut, useSession hook)
-- `middleware.ts` — Route protection for /resumes and /jobs; redirects unauthenticated users to /
 
 ## Directory Structure
 
@@ -85,10 +85,9 @@ jobbedin/
 │   ├── layout.tsx                # Root layout with AppStoreProvider
 │   ├── globals.css               # Yahoo Messenger design system styles
 │   ├── page.tsx                  # Login page with better-auth sign-in/sign-up
-│   ├── resumes/page.tsx          # Resume management page (protected by middleware)
-│   ├── jobs/page.tsx             # Job analysis and generation page (protected by middleware)
+│   ├── resumes/page.tsx          # Resume management page (API-protected via session validation)
+│   ├── jobs/page.tsx             # Job analysis and generation page (API-protected via session validation)
 │   └── favicon.ico
-├── middleware.ts                 # Route protection for /resumes and /jobs; session validation
 ├── docs/                          # Reference and design documentation
 │   ├── frontend/                 # Design system and style guides
 │   ├── lovable/                  # Lovable AI assistant context
@@ -110,7 +109,6 @@ jobbedin/
 
 ## Key Files
 
-- `middleware.ts` — Next.js middleware for route protection; validates session and redirects unauthenticated users from /resumes and /jobs to /
 - `app/layout.tsx` — Entry point for all pages; wraps children with AppStoreProvider
 - `app/page.tsx` — Login page with better-auth sign-in/sign-up forms; public (no middleware protection)
 - `app/lib/auth.ts` — better-auth server initialization with Drizzle ORM adapter; uses BETTER_AUTH_SECRET and ORIGIN env vars
@@ -118,8 +116,8 @@ jobbedin/
 - `app/lib/app-store.tsx` — Defines Item type and Store context; fetches resumes/jobs from API on mount; CRUD operations backed by API endpoints (now userId-scoped)
 - `app/lib/db/schema.ts` — Drizzle ORM table definitions: better-auth tables (user, session, account, verification) + data tables (resumes, resume_jobs, companies, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history, process); all non-auth tables have userId FK and updatedAt $onUpdate
 - `app/lib/db/index.ts` — PostgreSQL client initialization with environment variable validation and Drizzle ORM schema setup
-- `app/resumes/page.tsx` — Resume list, selection, markdown preview; protected by middleware; file upload triggers userId-scoped API POST and state refresh
-- `app/jobs/page.tsx` — Central hub for job analysis: tabs for Company, JDMatch, Feedback, and Generate (chat); protected by middleware; all operations userId-scoped
+- `app/resumes/page.tsx` — Resume list, selection, markdown preview; file upload triggers userId-scoped API POST and state refresh; supports .pdf, .txt, .md
+- `app/jobs/page.tsx` — Central hub for job analysis: tabs for Company, JDMatch, Feedback, and Generate (chat); all operations userId-scoped
 - `app/api/auth/[...all]/route.ts` — better-auth handler; routes all /api/auth/* requests through better-auth
 - `app/api/resumes/route.ts` — GET all resumes (userId-scoped), POST upload resume with name (userId-scoped); validates session
 - `app/api/resumes/[id]/route.ts` — DELETE resume by id (userId-scoped); validates session
@@ -151,7 +149,8 @@ jobbedin/
 - tailwind-merge 3.5.0 (merge conflicting Tailwind classes)
 
 **Authentication:**
-- better-auth 0.x (authentication framework with email/password flow)
+- better-auth 1.6.11 (authentication framework with email/password flow)
+- better-call 2.0.3 (utility library)
 - @better-auth/pg-adapter (Drizzle ORM adapter for better-auth tables)
 
 **Database & ORM:**
@@ -162,6 +161,7 @@ jobbedin/
 **Backend & utilities:**
 - dotenv 17.4.2 (environment variable management)
 - tsx 4.22.1 (TypeScript execution for scripts)
+- pdf-parse 2.4.5 (PDF text extraction)
 
 **Developer tools:**
 - TypeScript 5
@@ -209,7 +209,7 @@ jobbedin/
 - HTML5 semantic elements where possible; fallback to div for layout
 
 **Authentication with better-auth:**
-Session validation is done at two levels: (1) middleware protects /resumes and /jobs routes by checking session headers and redirecting unauthenticated users to /; (2) all data API routes (resumes, jobs, analysis, chat) explicitly validate session and scope all queries to the authenticated user's userId. Session tokens are managed by better-auth and stored in the database. The sign-out endpoint calls `authClient.signOut()` on the frontend, which clears the session cookie.
+All data API routes (resumes, jobs, analysis, chat) explicitly validate session via `auth.api.getSession({ headers: request.headers })` and scope all queries to the authenticated user's userId. If session is missing, routes return 401 Unauthorized. Session tokens are managed by better-auth and stored in the database. The sign-out endpoint calls `authClient.signOut()` on the frontend, which clears the session cookie. Pages are client-rendered without server-side route protection; API-level validation is the security boundary.
 
 **Backend API integration & userId scoping:**
 All resumes, jobs, and analysis data are persisted to PostgreSQL and scoped to the authenticated user's userId. On mount, `useAppStore()` calls API endpoints to fetch the user's resumes and jobs. CRUD operations (create, delete) trigger API calls which update both the database and the React Context. State survives page refresh. All API routes validate the session before executing queries.
@@ -221,16 +221,38 @@ The `/api/jobs/[id]/analyze` endpoint inserts hardcoded analysis data (company r
 PostgreSQL schema includes better-auth tables (user, session, account, verification) plus JobbedIn data tables (resumes, resume_jobs, companies, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history, process). Migrations are tracked in `drizzle/`. Environment variables must be set: PG_USER, PG_PASSWORD, PG_HOST, PG_PORT, PG_DATABASE (PostgreSQL), and BETTER_AUTH_SECRET, ORIGIN, ORIGIN_DEV (better-auth).
 
 **File handling:**
-Resume upload via hidden file input in `app/resumes/page.tsx`. Files are stored by name in the database; actual file content (PDF/DOCX parsing) is not yet implemented (UI labels this as "mock").
+Resume upload via hidden file input in `app/resumes/page.tsx`. Supports PDF, TXT, and Markdown files. PDF content is extracted to plain text using pdf-parse; TXT and MD files are decoded as UTF-8. File names (without extension) and content are stored in PostgreSQL. API route validates file type and returns 400 for unsupported formats.
 
 **Yahoo Messenger design system:**
 The entire visual language is intentionally retro (2000s Windows XP). This is not a limitation but a deliberate aesthetic choice. All components follow this design. New components must respect the `ym-` class naming and color palette.
 
-**Migration from Vite to Next.js:**
-The codebase was recently migrated from Vite + TanStack Router to Next.js App Router (see git history). Some patterns may still reflect that transition. The old Vite structure (`nextjs-migrate/`) is marked for deletion in git status.
+**Architecture evolution:**
+- Initial migration from Vite + TanStack Router to Next.js App Router completed (see git history)
+- Middleware-based route protection was recently removed (commit 540145d); now API-only session validation
+- PDF parsing via pdf-parse was added to support resume extraction from PDF files
 
 **Keyboard interaction:**
 The Yahoo Messenger design expects keyboard-friendly navigation. No buttons are disabled by default except when form validation fails. Tab order is implicit (DOM order).
+
+## Gotchas & Notes
+
+**No middleware route protection:**
+The middleware.ts file was removed. Pages like /resumes and /jobs are now publicly accessible but will fail to load data if session is missing (API returns 401). To add back server-side protection, implement a middleware.ts that checks session before allowing access to protected routes.
+
+**API session validation pattern:**
+Every API route uses `auth.api.getSession({ headers: request.headers })` to validate. This must be called before any database query. If missing, the route is vulnerable to unauthenticated access. All data queries must also use `eq(table.userId, session.user.id)` to prevent cross-user data leaks.
+
+**PDF parsing errors:**
+pdf-parse can fail on certain encrypted or malformed PDFs. The API returns 400 on parse failure, but does not retry or fallback. Large PDFs may timeout; consider implementing chunked processing for production.
+
+**File naming:**
+Resume files are stored by name (without extension). If two files have the same name, the second upload will create a duplicate entry with the same name but different UUID. Consider enforcing unique names per user or appending a timestamp.
+
+**Better-auth session management:**
+Session cookies are set by better-auth automatically. Logout via `authClient.signOut()` clears cookies on the client but does not invalidate the database record. Expired sessions are still present in the database (expiresAt timestamp is the source of truth).
+
+**No environment variable validation on app startup:**
+Database initialization happens at import time. Missing PG_* or BETTER_AUTH_SECRET env vars will crash the server. The app does not validate all required env vars at startup; only when db/auth modules are imported.
 
 ## Development Workflow
 
