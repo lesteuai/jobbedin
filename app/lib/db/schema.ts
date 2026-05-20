@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, pgEnum, json } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, pgEnum, json, timestamp } from "drizzle-orm/pg-core";
 
 export enum ProcessStatus {
 	Pending = 'pending',
@@ -8,10 +8,10 @@ export enum ProcessStatus {
 }
 
 export const processStatusEnum = pgEnum('process_status', [
-    ProcessStatus.Pending,
-    ProcessStatus.Processing,
-    ProcessStatus.Done,
-    ProcessStatus.Failed,
+  ProcessStatus.Pending,
+  ProcessStatus.Processing,
+  ProcessStatus.Done,
+  ProcessStatus.Failed,
 ] as const);
 
 export enum JobType {
@@ -23,16 +23,18 @@ export enum JobType {
 }
 
 export const jobTypeEnum = pgEnum('job_type', [
-    JobType.Company,
-    JobType.JDMatch,
-    JobType.ResumeFeedback,
-    JobType.Letter,
-    JobType.Message,
+  JobType.Company,
+  JobType.JDMatch,
+  JobType.ResumeFeedback,
+  JobType.Letter,
+  JobType.Message,
 ] as const);
 
 export const resume = pgTable('resumes', {
   id: uuid('id').primaryKey(),
-  content: text('content')
+  content: text('content'),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at')
 });
 
 export const resumeJob = pgTable('resume_jobs', {
@@ -40,7 +42,9 @@ export const resumeJob = pgTable('resume_jobs', {
   resumeId: uuid('resume_id')
     .notNull()
     .references(() => resume.id, {onDelete: 'cascade'}),
-  content: text('content')
+  content: text('content'),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at')
 });
 
 export const company = pgTable('companies', {
@@ -48,7 +52,9 @@ export const company = pgTable('companies', {
   jobId: uuid('job_id')
     .notNull()
     .references(() => resumeJob.id, {onDelete: 'cascade'}),
-  content: text('content')
+  content: text('content'),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at')
 });
 
 export const jobDescriptionMatch = pgTable('job_description_match', {
@@ -56,7 +62,9 @@ export const jobDescriptionMatch = pgTable('job_description_match', {
   jobId: uuid('job_id')
     .notNull()
     .references(() => resumeJob.id, {onDelete: 'cascade'}),
-  content: text('content')
+  content: text('content'),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at')
 });
 
 export const resumeFeedback = pgTable('resume_feedbacks', {
@@ -64,21 +72,27 @@ export const resumeFeedback = pgTable('resume_feedbacks', {
   jobId: uuid('job_id')
     .notNull()
     .references(() => resumeJob.id, {onDelete: 'cascade'}),
-  content: text('content')
+  content: text('content'),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at')
 });
 
 export const coverLetterHistory = pgTable('cover_letter_history', {
-    jobId: uuid('job_id')
-        .notNull()
-        .references(() => resumeJob.id, {onDelete: 'cascade'}),
-    conversation: json('conversation')
+  jobId: uuid('job_id')
+      .notNull()
+      .references(() => resumeJob.id, {onDelete: 'cascade'}),
+  conversation: json('conversation'),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at')
 });
 
 export const messageGenHistory = pgTable('message_gen_history', {
-    jobId: uuid('job_id')
-        .notNull()
-        .references(() => resumeJob.id, {onDelete: 'cascade'}),
-    conversation: json('conversation')
+  jobId: uuid('job_id')
+      .notNull()
+      .references(() => resumeJob.id, {onDelete: 'cascade'}),
+  conversation: json('conversation'),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at')
 });
 
 export const process = pgTable('processes', {
@@ -88,4 +102,6 @@ export const process = pgTable('processes', {
     .references(() => resumeJob.id, {onDelete: 'cascade'}),
   jobType: jobTypeEnum('job_type').notNull(),
   status: processStatusEnum('status').notNull().default(ProcessStatus.Pending),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at')
 });

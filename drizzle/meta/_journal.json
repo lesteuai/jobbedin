@@ -8,6 +8,20 @@
       "when": 1779173651815,
       "tag": "0000_dusty_toro",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779251912180,
+      "tag": "0001_ordinary_ben_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779251981677,
+      "tag": "0002_charming_blade",
+      "breakpoints": true
     }
   ]
 }
