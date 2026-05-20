@@ -22,6 +22,13 @@
       "when": 1779251981677,
       "tag": "0002_charming_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779253567577,
+      "tag": "0003_amusing_stick",
+      "breakpoints": true
     }
   ]
 }

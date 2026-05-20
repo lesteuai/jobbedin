@@ -14,7 +14,7 @@ export const processStatusEnum = pgEnum('process_status', [
   ProcessStatus.Failed,
 ] as const);
 
-export enum JobType {
+export enum ProcessType {
 	Company = 'company',
 	JDMatch = 'jdmatch',
 	ResumeFeedback = 'feedback',
@@ -22,12 +22,12 @@ export enum JobType {
 	Message = 'message',
 }
 
-export const jobTypeEnum = pgEnum('job_type', [
-  JobType.Company,
-  JobType.JDMatch,
-  JobType.ResumeFeedback,
-  JobType.Letter,
-  JobType.Message,
+export const processTypeEnum = pgEnum('process_type', [
+  ProcessType.Company,
+  ProcessType.JDMatch,
+  ProcessType.ResumeFeedback,
+  ProcessType.Letter,
+  ProcessType.Message,
 ] as const);
 
 export const resume = pgTable('resumes', {
@@ -100,7 +100,7 @@ export const process = pgTable('processes', {
   jobId: uuid('job_id')
     .notNull()
     .references(() => resumeJob.id, {onDelete: 'cascade'}),
-  jobType: jobTypeEnum('job_type').notNull(),
+  processType: processTypeEnum('process_type').notNull(),
   status: processStatusEnum('status').notNull().default(ProcessStatus.Pending),
 	createdAt: timestamp('created_at').defaultNow(),
 	updatedAt: timestamp('updated_at')
