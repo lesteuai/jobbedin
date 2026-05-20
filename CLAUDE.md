@@ -22,10 +22,10 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 
 **Key architectural layers:**
 - **Frontend**: Client-side React components with `use client` directives (all user-facing pages and interactive components)
-- **State management**: React Context (AppStore) for cross-page state synchronization of resumes and jobs (currently client-only, no persistence)
+- **State management**: React Context (AppStore) for cross-page state synchronization; synced to backend API on mount and after mutations
 - **Styling**: Tailwind CSS v4 with unified Yahoo Messenger design system (`ym-` class prefix)
 - **Backend database**: PostgreSQL with Drizzle ORM for type-safe schema and migrations
-- **API layer**: Next.js App Router API routes for backend operations
+- **API layer**: Next.js App Router API routes for resume/job CRUD, analysis data insertion, and chat persistence
 - **AI processing**: Planned LangGraph agents and OpenAI API integration
 
 ## Key Entry Points
@@ -42,6 +42,20 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 jobbedin/
 ├── app/                          # Next.js App Router pages and server-side logic
 │   ├── api/                      # API routes (Next.js server functions)
+│   │   ├── resumes/
+│   │   │   ├── route.ts          # GET list resumes, POST upload resume
+│   │   │   └── [id]/
+│   │   │       └── route.ts      # DELETE resume by id
+│   │   ├── jobs/
+│   │   │   ├── route.ts          # GET jobs by resumeId, POST create job
+│   │   │   └── [id]/
+│   │   │       ├── route.ts      # DELETE job by id
+│   │   │       ├── analyze/
+│   │   │       │   └── route.ts  # POST - inserts static analysis data (company/jdMatch/feedback)
+│   │   │       ├── analysis/
+│   │   │       │   └── route.ts  # GET - returns company/jdMatch/feedback and process data
+│   │   │       └── chat/
+│   │   │           └── route.ts  # GET/POST - chat history persistence
 │   │   └── hello/route.ts        # Test endpoint (POST/GET)
 │   ├── components/
 │   │   └── ym/                   # Yahoo Messenger UI component library
@@ -51,7 +65,7 @@ jobbedin/
 │   │       ├── YmModal.tsx       # Confirmation dialog
 │   │       └── MarkdownPanel.tsx # Markdown renderer for content display
 │   ├── lib/
-│   │   ├── app-store.tsx         # React Context for resume/job state management
+│   │   ├── app-store.tsx         # React Context for resume/job state management; API-backed
 │   │   ├── utils.ts              # Utility: cn() for class merging (clsx + tailwind-merge)
 │   │   └── db/
 │   │       ├── index.ts          # Drizzle ORM initialization and PostgreSQL client
@@ -70,6 +84,8 @@ jobbedin/
 │   └── LangGraph multi agent.pdf # Future agent orchestration reference
 ├── references/                    # Reference documents and agent outputs
 ├── future_jobs/                  # Future feature planning and pipelines
+├── drizzle/                      # Migration files
+│   └── 0004_colorful_klaw.sql    # Schema updates (name fields, jobId PK)
 ├── drizzle.config.ts             # Drizzle Kit migration configuration
 ├── next.config.ts                # Next.js configuration (standalone output)
 ├── tsconfig.json                 # TypeScript configuration with @ alias
@@ -84,11 +100,18 @@ jobbedin/
 ## Key Files
 
 - `app/layout.tsx` — Entry point for all pages; wraps children with AppStoreProvider
-- `app/lib/app-store.tsx` — Defines Item type and Store context; seed data for resumes and jobs; CRUD operations (currently client-only)
+- `app/lib/app-store.tsx` — Defines Item type and Store context; fetches resumes/jobs from API on mount; CRUD operations backed by API endpoints
 - `app/lib/db/schema.ts` — Drizzle ORM table definitions: resumes, resume_jobs, companies, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history, process tracking
-- `app/lib/db/index.ts` — PostgreSQL client initialization with environment variable validation
-- `app/resumes/page.tsx` — Resume list, selection, and markdown preview with navigation to jobs
-- `app/jobs/page.tsx` — Central hub for job analysis: tabs for Company, JDMatch, Feedback, and Generate (chat); handles view states (idle, view, add, report)
+- `app/lib/db/index.ts` — PostgreSQL client initialization with environment variable validation and Drizzle ORM schema setup
+- `app/resumes/page.tsx` — Resume list, selection, markdown preview; file upload triggers API POST and state refresh
+- `app/jobs/page.tsx` — Central hub for job analysis: tabs for Company, JDMatch, Feedback, and Generate (chat); OK button saves via API, Analyze fetches static analysis data, Generate persists chat messages
+- `app/api/resumes/route.ts` — GET all resumes, POST upload resume with name
+- `app/api/resumes/[id]/route.ts` — DELETE resume by id
+- `app/api/jobs/route.ts` — GET jobs filtered by resumeId, POST create job with description
+- `app/api/jobs/[id]/route.ts` — DELETE job by id
+- `app/api/jobs/[id]/analyze/route.ts` — POST to insert static analysis data (company research, JD match, feedback) into database
+- `app/api/jobs/[id]/analysis/route.ts` — GET analysis data for a job (company, jdMatch, feedback, process records)
+- `app/api/jobs/[id]/chat/route.ts` — GET chat history, POST new chat message for a job
 - `app/globals.css` — Complete Yahoo Messenger design system (300+ lines of CSS variables, primitives, and component styles)
 - `app/components/ym/*.tsx` — Modular UI primitives for consistent theming
 - `drizzle.config.ts` — Drizzle Kit configuration for schema migrations and introspection
@@ -166,18 +189,17 @@ jobbedin/
 - Type definitions colocated with their use (e.g., `Item`, `Store`, `Mode`, `Tab`)
 - HTML5 semantic elements where possible; fallback to div for layout
 
-## Gotchas & Notes
+**Backend API integration:**
+Resumes and jobs are now persisted to PostgreSQL via API endpoints. On mount, `useAppStore()` calls API endpoints to fetch resumes and jobs. CRUD operations (create, delete) trigger API calls which update both the database and the React Context. State survives page refresh.
 
-**Frontend-only state (client-side state not yet synced to backend):**
-The app currently stores resumes and jobs entirely in React Context with no backend persistence. Refreshing the page loses all state. Sample data is hardcoded and regenerated on mount. The database schema and ORM are in place but not yet wired to the UI. This is a temporary placeholder awaiting backend API integration.
+**Analysis data is static (backend-provided):**
+The `/api/jobs/[id]/analyze` endpoint inserts hardcoded analysis data (company research, JD match scoring, resume feedback) into the database. These are not yet generated by AI agents; they are placeholder data for testing the analysis data flow. Chat responses are generated by the UI; actual AI generation is planned via LangGraph agents.
 
-**Database infrastructure in place:**
-PostgreSQL schema is defined via Drizzle ORM (resumes, resume_jobs, companies, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history, process). Environment variables (PG_USER, PG_PASSWORD, PG_HOST, PG_PORT, PG_DATABASE) must be set in .env for the database client to initialize. No migrations have been run yet; this is setup awaiting deployment.
+**Database in production:**
+PostgreSQL schema is wired and migrations are tracked in `drizzle/`. Environment variables (PG_USER, PG_PASSWORD, PG_HOST, PG_PORT, PG_DATABASE) must be set in .env. The database client initializes at request time; Drizzle ORM queries execute on-demand.
 
-**Mock data throughout:**
-- `app/jobs/page.tsx` contains `MOCK` object with hardcoded analysis for Company, JDMatch, and Feedback tabs
-- Chat responses are mock strings; no actual AI calls
-- Resume and job management is CRUD-only; no parsing of .pdf or .docx files (noted in UI as "mock")
+**File handling:**
+Resume upload via hidden file input in `app/resumes/page.tsx`. Files are stored by name in the database; actual file content (PDF/DOCX parsing) is not yet implemented (UI labels this as "mock").
 
 **Yahoo Messenger design system:**
 The entire visual language is intentionally retro (2000s Windows XP). This is not a limitation but a deliberate aesthetic choice. All components follow this design. New components must respect the `ym-` class naming and color palette.
