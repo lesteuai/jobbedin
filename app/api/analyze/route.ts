@@ -9,7 +9,7 @@ import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { SystemMessage } from "@langchain/core/messages";
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 
 // ---------------------------------------------------------
 // 1. Prompts (Copied exactly from your Python script)
@@ -105,8 +105,8 @@ export async function POST(req: NextRequest) {
 
     // Extract PDF Text
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const pdfData = await pdfParse(buffer);
+    const pdfParser = new PDFParse({ data: arrayBuffer });
+    const pdfData = await pdfParser.getText();;
     const resumeText = pdfData.text;
 
     // Define Graph Nodes
