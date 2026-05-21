@@ -104,8 +104,11 @@ export default function LoginPage() {
                 disabled={loading}
               />
             </label>
-
-            {mode !== 'forgot' && (
+            
+            {/* {mode !== 'forgot' && ( */
+              // Disable forgot mode in the rendered Password input
+            }
+            {
               <label style={{ fontSize: 12 }}>
                 Password
                 <input
@@ -118,7 +121,7 @@ export default function LoginPage() {
                   disabled={loading}
                 />
               </label>
-            )}
+            }
 
             {error && (
               <div style={{ fontSize: 12, color: 'oklch(0.5 0.2 10)', marginTop: 4 }}>
