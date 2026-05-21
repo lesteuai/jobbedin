@@ -5,7 +5,7 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate } from "@langchain/core/prompts";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
+import { TavilySearch } from "@langchain/tavily";
 import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { SystemMessage } from "@langchain/core/messages";
@@ -63,7 +63,7 @@ const reasoningLlm = new ChatOpenAI({
   configuration: { baseURL: "https://openrouter.ai/api/v1" }
 });
 
-const tavily = new TavilySearchResults({ maxResults: 5 });
+const tavily = new TavilySearch({ maxResults: 5 });
 
 const companySearchTool = tool(async ({ query }) => {
   const doRes = await tavily.invoke(`What ${query} do in 2025 2026?`);
