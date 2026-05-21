@@ -1,36 +1,40 @@
-# JobbedIn
-An agentic AI system that researches company details to personalize cover letters and messages to hiring personnel.
+## Inspiration
+It's 2026. You are trying to apply for a job, an internship, anything. We were just like you, trying over 500 applications, only a handful of interviews to speak off. This is not mentioning how we have to adjust our letters and Linkedin messages to send to hiring managers, founders, recruiters. I have tried with Claude.ai, got custom prompts, rules and everything. But it is tedious having to:
+- Edit the resume
+- Edit the job
+- Telling it to generate message instead of mail, because we were a few message level deep and it was a hassle writing yet another prompt just for a message.
+So we came up with this. Meet JobbedIn, your job hunting buddy.
 
----
-## How it works
-It is designed to perform the following tasks:
+## What it does
+JobbedIn, an agentic AI system that:
+- Receive your resume and job description.
+- Research your chosen company based on the job description. Who they are, what they do, what it is like to work with them, etc.
+- Cross-reference your experience in the resume against the job requirements
+- Provide a critique of the resume.
+- Generate a comprehensive summary report based on the preceding steps.
+- Create a personalized cover letter and a 100-word message to send to recruiters on LinkedIn.
 
-- (1) Ingest a resume and job description (provided as text or a URL).
-- (2) Deploy an agent to research the target company.
-- (3) Cross-reference the candidate's experience against the job requirements.
-- (4) Provide a critique of the resume.
-- (5) Generate a comprehensive summary report based on the preceding steps.
-- (6) Based on the findings from the two steps above:
-  - (a) Draft a personalized cover letter.
-  - (b) Compose a 100-word summary for recruitment purposes (e.g., for LinkedIn).
+## How we built it
+We built it with a standard tech stack:
+- Next.js, Tailwind, Postgres for web stack.
+- LangGraph for agent orchestration.
+- Using OpenAI-compatible LLM models in OpenRouter.
+- UI designed by Lovable based on Yahoo Messenger of the 2000s (one of us was from that era)
+- Wireframe made by Canva (drawn by us, not AI).
+- Claude Code and Gemini handled the coding.
+- Deployed to Vercel with Supabase as the database.
 
-This application prioritizes job roles within the Computer Science (CS) field, as that is our area of ​​expertise.
+## Challenges we ran into
+- Working together: Due to our difference in experience, I (Brian) became the project manager. I helped my teammate understand how to use git, how to draw wireframe, understand task and priority. I also taught him to not always rely on AI and to understand deeply what to do, because they can and have been wrong. He taught me how to be more of a leader and manager instead of just another coder. We both came up with ideas, I helped him realize the implimentation of those ideas.
+- Vercel was a pain to set up in deployment of anything that is not the production environment. To deploy to the development environment, I had to run `vercel` on my computer instead of using the web UI, because it didn't have the option to deploy from anywhere except `main` branch.
+- OpenRouter free rate limit. That's what happened when you used free models for an agentic task. It tool-called a lot.
 
----
-## Workflow:
+## Accomplishments that we're proud of
+This whole project. What we have done to achieve this.
 
-```
-(1) → (2 // 3 // 4) → (5) → (6a // 6b)
-```
-**Symbols:**\
-//: Parallel agent execution
+## What we learned
+- Supabase is good stuff. I should have learned earlier. Vercel is only okay. Least is still appealing to look at, compared to AWS, GCP. 
+- LangGraph is quite easy to grasp. I guess AI agent framework is another tool to add to the pile that is full stack development (not recommend though. We're already stressed enough by doing jobs of 3 men: front, back, DevOps).
 
----
-## Technology Stack
-
-- **Frontend:** Next.js, Tailwind
-- **Backend:** Next.js
-- **Database:** PostgreSQL
-- **AI Frameworks:** LangGraph (orchestration), OpenAI-compatible APIs
-- **Tools:** Lovable, Claude Code
-- **Deployment:** Vercel, Supabase
+## What's next for JobbedIn
+- Brush it up for production deployment. Or at least, people can download and use this with just an API key to an OpenAI-compatible model.
