@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { YmErrorModal } from "@/app/components/ym/YmErrorModal";
 
 export type Item = { id: string; name: string; content: string };
 
@@ -16,24 +17,43 @@ type Store = {
   selectResume: (id: string | null) => void;
   selectJob: (id: string | null) => void;
   refreshResumes: () => Promise<void>;
+  showError: (message: string) => void;
 };
 
 const Ctx = createContext<Store | null>(null);
+
+async function apiErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const json = await res.json();
+    return json?.error ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [resumes, setResumes] = useState<Item[]>([]);
   const [jobs, setJobs] = useState<Item[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const showError = (message: string) => setErrorMessage(message);
+  const clearError = () => setErrorMessage(null);
 
   const refreshResumes = async () => {
     try {
       const res = await fetch('/api/resumes');
-      if (!res.ok) throw new Error('Failed to fetch resumes');
+      if (!res.ok) {
+        const msg = await apiErrorMessage(res, 'Failed to fetch resumes');
+        showError(msg);
+        return;
+      }
       const data = await res.json();
       setResumes(data);
     } catch (err) {
       console.error('Error refreshing resumes:', err);
+      showError('Failed to fetch resumes. Please try again.');
     }
   };
 
@@ -49,11 +69,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const fetchJobs = async () => {
       try {
         const res = await fetch(`/api/jobs?resumeId=${selectedResumeId}`);
-        if (!res.ok) throw new Error('Failed to fetch jobs');
+        if (!res.ok) {
+          const msg = await apiErrorMessage(res, 'Failed to fetch jobs');
+          showError(msg);
+          return;
+        }
         const data = await res.json();
         setJobs(data);
       } catch (err) {
         console.error('Error fetching jobs:', err);
+        showError('Failed to fetch jobs. Please try again.');
       }
     };
     fetchJobs();
@@ -65,44 +90,41 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const addJob = async (content: string) => {
     if (!selectedResumeId) throw new Error('No resume selected');
-    try {
-      const res = await fetch('/api/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeId: selectedResumeId, content }),
-      });
-      if (!res.ok) throw new Error('Failed to add job');
-      const newJob = await res.json();
-      setJobs((p) => [...p, newJob]);
-      return newJob.id;
-    } catch (err) {
-      console.error('Error adding job:', err);
-      throw err;
+    const res = await fetch('/api/jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resumeId: selectedResumeId, content }),
+    });
+    if (!res.ok) {
+      const msg = await apiErrorMessage(res, 'Failed to add job');
+      showError(msg);
+      throw new Error(msg);
     }
+    const newJob = await res.json();
+    setJobs((p) => [...p, newJob]);
+    return newJob.id;
   };
 
   const deleteResume = async (id: string) => {
-    try {
-      const res = await fetch(`/api/resumes/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete resume');
-      setResumes((p) => p.filter((x) => x.id !== id));
-      if (selectedResumeId === id) setSelectedResumeId(null);
-    } catch (err) {
-      console.error('Error deleting resume:', err);
-      throw err;
+    const res = await fetch(`/api/resumes/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const msg = await apiErrorMessage(res, 'Failed to delete resume');
+      showError(msg);
+      throw new Error(msg);
     }
+    setResumes((p) => p.filter((x) => x.id !== id));
+    if (selectedResumeId === id) setSelectedResumeId(null);
   };
 
   const deleteJob = async (id: string) => {
-    try {
-      const res = await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete job');
-      setJobs((p) => p.filter((x) => x.id !== id));
-      if (selectedJobId === id) setSelectedJobId(null);
-    } catch (err) {
-      console.error('Error deleting job:', err);
-      throw err;
+    const res = await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const msg = await apiErrorMessage(res, 'Failed to delete job');
+      showError(msg);
+      throw new Error(msg);
     }
+    setJobs((p) => p.filter((x) => x.id !== id));
+    if (selectedJobId === id) setSelectedJobId(null);
   };
 
   return (
@@ -119,9 +141,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         selectResume: setSelectedResumeId,
         selectJob: setSelectedJobId,
         refreshResumes,
+        showError,
       }}
     >
       {children}
+      <YmErrorModal
+        open={errorMessage !== null}
+        message={errorMessage ?? ''}
+        onClose={clearError}
+      />
     </Ctx.Provider>
   );
 }

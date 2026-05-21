@@ -17,6 +17,7 @@ export default function ResumesPage() {
     selectResume,
     deleteResume,
     refreshResumes,
+    showError,
   } = useAppStore();
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -39,13 +40,18 @@ export default function ResumesPage() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error('Failed to upload resume');
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        showError(json?.error ?? 'Failed to upload resume');
+        return;
+      }
       const newResume = await res.json();
 
       await refreshResumes();
       selectResume(newResume.id);
     } catch (err) {
       console.error('Error uploading resume:', err);
+      showError('Failed to upload resume. Please try again.');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {

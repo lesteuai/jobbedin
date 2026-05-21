@@ -22,7 +22,7 @@ const PLACEHOLDER: Record<Mode, string> = {
 
 export default function JobsPage() {
   const router = useRouter();
-  const { jobs, selectedJobId, selectJob, addJob, deleteJob } = useAppStore();
+  const { jobs, selectedJobId, selectJob, addJob, deleteJob, showError } = useAppStore();
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [view, setView] = useState<View>('idle');
   const [draft, setDraft] = useState('');
@@ -79,6 +79,7 @@ export default function JobsPage() {
         setChatsLoaded(true);
       } catch (err) {
         console.error('Error loading chats:', err);
+        showError('Failed to load chat history. Please try again.');
       }
     };
 
@@ -156,6 +157,8 @@ export default function JobsPage() {
       setTab('Company');
     } catch (err) {
       console.error('Error analyzing job:', err);
+      const msg = err instanceof Error ? err.message : 'Failed to analyze job. Please try again.';
+      showError(msg);
     } finally {
       setIsAnalyzing(false);
     }
