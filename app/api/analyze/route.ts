@@ -66,9 +66,9 @@ const reasoningLlm = new ChatOpenAI({
 const tavily = new TavilySearch({ maxResults: 5 });
 
 const companySearchTool = tool(async ({ query }) => {
-  const doRes = await tavily.invoke(`What ${query} do in 2025 2026?`);
-  const hireRes = await tavily.invoke(`Why ${query} are hiring right now?`);
-  const cultureRes = await tavily.invoke(`What ${query} 's work culture?`);
+  const doRes = await tavily.invoke({query: `What ${query} do in 2025 2026?`});
+  const hireRes = await tavily.invoke({query: `Why ${query} are hiring right now?`});
+  const cultureRes = await tavily.invoke({query: `What ${query} 's work culture?`});
   return `What they do: ${doRes}\nWhy they are hiring: ${hireRes}\nWork culture: ${cultureRes}`;
 }, {
   name: "company_search",
