@@ -8,17 +8,11 @@ import { YmModal } from '@/app/components/ym/YmModal';
 import { YmButton } from '@/app/components/ym/YmButton';
 import { MarkdownPanel } from '@/app/components/ym/MarkdownPanel';
 import { useAppStore } from '@/app/lib/app-store';
+import { useChat } from '@/app/hooks/use-chat';
+import { AnalysisReport } from '@/app/components/AnalysisReport';
+import type { Tab } from '@/app/components/AnalysisReport';
 
 type View = 'idle' | 'view' | 'add' | 'report';
-const TABS = ['Company', 'JDMatch', 'Feedback', 'Generate'] as const;
-type Tab = (typeof TABS)[number];
-type Mode = 'letter' | 'message';
-type ChatLine = { role: 'user' | 'ai'; text: string };
-
-const PLACEHOLDER: Record<Mode, string> = {
-  letter: 'Tell me how you want your letter to be like: tone, content highlights, etc',
-  message: 'Tell me how you want your message to look like: tone, content highlights, etc',
-};
 
 export default function ResumesJobsPage() {
   const router = useRouter();
@@ -39,26 +33,17 @@ export default function ResumesJobsPage() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [tab, setTab] = useState<Tab>('Company');
-  const [mode, setMode] = useState<Mode>('letter');
-  const [chats, setChats] = useState<Record<Mode, ChatLine[]>>({ letter: [], message: [] });
-  const [chatDraft, setChatDraft] = useState('');
-  const [chatsLoaded, setChatsLoaded] = useState(false);
-  const [isSendingChat, setIsSendingChat] = useState(false);
-  const [isAiTyping, setIsAiTyping] = useState(false);
-  const [typingDots, setTypingDots] = useState('.');
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const chat = useChat(selectedJobId, tab);
 
   const selected = jobs.find((j) => j.id === selectedJobId);
   const pendingName = jobs.find((j) => j.id === pendingDelete)?.name;
 
   useEffect(() => {
-    if (resumeId) {
-      selectResume(resumeId);
-    }
+    if (resumeId) selectResume(resumeId);
   }, [resumeId, selectResume]);
 
   const getProcessStatus = (type: string) =>
-    processStatuses.find(p => p.processType === type)?.status ?? null;
+    processStatuses.find((p) => p.processType === type)?.status ?? null;
 
   const handleSelect = (id: string) => {
     setView('view');
@@ -79,10 +64,10 @@ export default function ResumesJobsPage() {
         const data = await res.json();
         setAnalysisData({ company: data.company, jdMatch: data.jdMatch, feedback: data.feedback });
         setProcessStatuses(data.processes ?? []);
-        if (data.letterConversation) setChats(p => ({ ...p, letter: data.letterConversation }));
-        if (data.messageConversation) setChats(p => ({ ...p, message: data.messageConversation }));
+        if (data.letterConversation) chat.setChats((p) => ({ ...p, letter: data.letterConversation }));
+        if (data.messageConversation) chat.setChats((p) => ({ ...p, message: data.messageConversation }));
         const procs: Array<{ status: string }> = data.processes ?? [];
-        const allDone = procs.length === 5 && procs.every(p => p.status === 'done' || p.status === 'failed');
+        const allDone = procs.length === 5 && procs.every((p) => p.status === 'done' || p.status === 'failed');
         if (allDone) { stopPolling(); setIsAnalyzing(false); }
       } catch { /* ignore transient errors */ }
     }, 1000);
@@ -94,124 +79,7 @@ export default function ResumesJobsPage() {
     setProcessStatuses([]);
   }, [selectedJobId]);
 
-  useEffect(() => {
-    if (tab !== 'Generate' || !selectedJobId) {
-      return;
-    }
-
-    const loadChats = async () => {
-      try {
-        const [letterRes, messageRes] = await Promise.all([
-          fetch(`/api/jobs/${selectedJobId}/chat?mode=letter`),
-          fetch(`/api/jobs/${selectedJobId}/chat?mode=message`),
-        ]);
-
-        if (!letterRes.ok || !messageRes.ok) {
-          throw new Error('Failed to load chat history');
-        }
-
-        const letterData = await letterRes.json();
-        const messageData = await messageRes.json();
-
-        setChats({
-          letter: letterData.conversation || [],
-          message: messageData.conversation || [],
-        });
-        setChatsLoaded(true);
-      } catch (err) {
-        console.error('Error loading chats:', err);
-        showError('Failed to load chat history. Please try again.');
-      }
-    };
-
-    loadChats();
-  }, [selectedJobId, tab]);
-
   useEffect(() => () => stopPolling(), []);
-
-  const lines = chats[mode];
-
-  useEffect(() => {
-    if (!isAiTyping) return;
-    const interval = setInterval(() => {
-      setTypingDots((prev) => {
-        if (prev === '.') return '..';
-        if (prev === '..') return '...';
-        return '.';
-      });
-    }, 400);
-    return () => clearInterval(interval);
-  }, [isAiTyping]);
-
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [lines, isAiTyping]);
-  const canSend = chatDraft.trim().length > 0 && !isSendingChat;
-  const canClear = lines.length > 0;
-
-  const handleSend = async () => {
-    if (!canSend || !selectedJobId) return;
-
-    const userMessage = chatDraft.trim();
-    setChatDraft('');
-    setIsSendingChat(true);
-
-    setChats((p) => ({
-      ...p,
-      [mode]: [...p[mode], { role: 'user', text: userMessage }],
-    }));
-    setIsAiTyping(true);
-
-    try {
-      const res = await fetch(`/api/jobs/${selectedJobId}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode, userMessage }),
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to send message');
-      }
-
-      const data = await res.json();
-      const aiReply = data.reply;
-
-      setChats((p) => ({
-        ...p,
-        [mode]: [...p[mode], { role: 'ai', text: aiReply }],
-      }));
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error sending message';
-      showError(msg);
-      setChatDraft(userMessage);
-      setChats((p) => ({
-        ...p,
-        [mode]: p[mode].slice(0, -1),
-      }));
-    } finally {
-      setIsSendingChat(false);
-      setIsAiTyping(false);
-    }
-  };
-
-  const handleClear = async () => {
-    if (!selectedJobId) return;
-
-    setChats((p) => ({ ...p, [mode]: [] }));
-    setChatDraft('');
-
-    try {
-      await fetch(`/api/jobs/${selectedJobId}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode, conversation: [] }),
-      });
-    } catch (err) {
-      console.error('Error clearing chat:', err);
-    }
-  };
 
   const handleAnalyze = async () => {
     if (!selectedJobId) return;
@@ -226,8 +94,8 @@ export default function ResumesJobsPage() {
         const analysis = await analysisRes.json();
         setAnalysisData({ company: analysis.company, jdMatch: analysis.jdMatch, feedback: analysis.feedback });
         setProcessStatuses(analysis.processes ?? []);
-        if (analysis.letterConversation) setChats(p => ({ ...p, letter: analysis.letterConversation }));
-        if (analysis.messageConversation) setChats(p => ({ ...p, message: analysis.messageConversation }));
+        if (analysis.letterConversation) chat.setChats((p) => ({ ...p, letter: analysis.letterConversation }));
+        if (analysis.messageConversation) chat.setChats((p) => ({ ...p, message: analysis.messageConversation }));
         setIsAnalyzing(false);
         setView('report');
         setTab('Company');
@@ -264,167 +132,20 @@ export default function ResumesJobsPage() {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {view === 'report' && selected ? (
-          <>
-            {/* Header with back button */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 12px 0',
-              }}
-            >
-              <YmButton onClick={() => setView('view')}>← Back to Job</YmButton>
-              <span style={{ fontWeight: 'bold', fontSize: 13 }}>
-                Analysis: {selected.name}
-              </span>
-            </div>
-
-            <div className="ym-tabs" style={{ marginTop: 6 }}>
-              {TABS.map((t) => (
-                <button
-                  key={t}
-                  className="ym-tab"
-                  data-active={tab === t}
-                  onClick={() => setTab(t)}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {tab !== 'Generate' ? (() => {
-                const tabConfig: Record<string, { processType: string; content: string | null | undefined }> = {
-                  Company: { processType: 'company', content: analysisData?.company },
-                  JDMatch: { processType: 'jdmatch', content: analysisData?.jdMatch },
-                  Feedback: { processType: 'feedback', content: analysisData?.feedback },
-                };
-                const cfg = tabConfig[tab] ?? { processType: '', content: null };
-                const status = getProcessStatus(cfg.processType);
-                if (status === 'done' && cfg.content) return <MarkdownPanel>{cfg.content}</MarkdownPanel>;
-                if (status === 'processing' || status === 'pending') return <div style={{ color: '#666', fontStyle: 'italic' }}>Processing...</div>;
-                if (status === 'failed') return <div style={{ color: '#c00', fontStyle: 'italic' }}>Analysis failed for this section.</div>;
-                return <div style={{ color: '#666', fontStyle: 'italic' }}>Click Analyze to generate analysis.</div>;
-              })() : (
-                <>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      fontSize: 12,
-                    }}
-                  >
-                    <span style={{ fontWeight: 'bold' }}>Mode:</span>
-                    <YmButton
-                      variant={mode === 'letter' ? 'primary' : 'default'}
-                      onClick={() => setMode('letter')}
-                    >
-                      Cover Letter
-                    </YmButton>
-                    <YmButton
-                      variant={mode === 'message' ? 'primary' : 'default'}
-                      onClick={() => setMode('message')}
-                    >
-                      Message
-                    </YmButton>
-                    <span style={{ color: '#666', marginLeft: 8 }}>
-                      Chatting with <b style={{ color: 'oklch(0.4 0.2 250)' }}>JobbedIn-AI</b>
-                    </span>
-                  </div>
-
-                  <div
-                    ref={chatContainerRef}
-                    className="ym-inset"
-                    style={{
-                      flex: 1,
-                      padding: 10,
-                      overflow: 'auto',
-                      fontFamily: 'var(--ym-font)',
-                      fontSize: 12,
-                    }}
-                  >
-                    {(() => {
-                      const modeProcessType = mode === 'letter' ? 'letter' : 'message';
-                      const modeStatus = getProcessStatus(modeProcessType);
-                      if (modeStatus === 'pending' || modeStatus === 'processing') {
-                        return <div style={{ color: '#888', fontStyle: 'italic' }}>{`Generating your ${mode === 'letter' ? 'cover letter' : 'message'}...`}</div>;
-                      }
-                      if (modeStatus === 'failed') {
-                        return <div style={{ color: '#c00', fontStyle: 'italic' }}>Generation failed. Please re-analyze.</div>;
-                      }
-                      return (
-                        <>
-                          {lines.length === 0 && !isAiTyping ? (
-                            <div style={{ color: '#888', fontStyle: 'italic' }}>(No messages yet. Start typing below.)</div>
-                          ) : (
-                            <>
-                              {lines.map((l, i) => (
-                                <div key={i} className="ym-chat-line">
-                                  <span className={l.role === 'user' ? 'ym-bubble-user' : 'ym-bubble-ai'}>
-                                    {l.role === 'user' ? 'You: ' : 'JobbedIn-AI: '}
-                                  </span>
-                                  {l.text}
-                                </div>
-                              ))}
-                              {isAiTyping && (
-                                <div className="ym-chat-line">
-                                  <span className="ym-bubble-ai">JobbedIn-AI: </span>
-                                  {typingDots}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
-                    <textarea
-                      className="ym-textarea ym-blur-placeholder"
-                      style={{
-                        flex: 1,
-                        resize: 'none',
-                        minHeight: 56,
-                        fontFamily: 'var(--ym-font)',
-                      }}
-                      placeholder={PLACEHOLDER[mode]}
-                      value={chatDraft}
-                      onChange={(e) => setChatDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                          e.preventDefault();
-                          handleSend();
-                        }
-                      }}
-                    />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <YmButton onClick={handleClear} disabled={!canClear} style={{ minWidth: 56 }}>
-                        Clear
-                      </YmButton>
-                      <YmButton
-                        variant="primary"
-                        onClick={handleSend}
-                        disabled={!canSend}
-                        style={{ minWidth: 56, flex: 1 }}
-                      >
-                        Send ▶
-                      </YmButton>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </>
+          <AnalysisReport
+            selectedName={selected.name}
+            tab={tab}
+            setTab={setTab}
+            analysisData={analysisData}
+            getProcessStatus={getProcessStatus}
+            onBack={() => setView('view')}
+            chat={chat}
+          />
         ) : (
           <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {view === 'add' ? (
               <>
-                <div style={{ fontWeight: 'bold', fontSize: 13 }}>
-                  ✎ Paste job description
-                </div>
+                <div style={{ fontWeight: 'bold', fontSize: 13 }}>✎ Paste job description</div>
                 <textarea
                   className="ym-textarea"
                   style={{ flex: 1, resize: 'none', fontFamily: 'var(--ym-font)' }}
@@ -434,14 +155,7 @@ export default function ResumesJobsPage() {
                   autoFocus
                 />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                  <YmButton
-                    onClick={() => {
-                      setDraft('');
-                      setView('idle');
-                    }}
-                  >
-                    Cancel
-                  </YmButton>
+                  <YmButton onClick={() => { setDraft(''); setView('idle'); }}>Cancel</YmButton>
                   <YmButton
                     variant="primary"
                     disabled={!draft.trim()}
@@ -459,25 +173,17 @@ export default function ResumesJobsPage() {
               </>
             ) : selected ? (
               <>
-                <div style={{ fontWeight: 'bold', fontSize: 13 }}>
-                  💼 {selected.name} — description
-                </div>
+                <div style={{ fontWeight: 'bold', fontSize: 13 }}>💼 {selected.name} — description</div>
                 <MarkdownPanel>{selected.content}</MarkdownPanel>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                  <YmButton
-                    variant="primary"
-                    disabled={isAnalyzing}
-                    onClick={handleAnalyze}
-                  >
+                  <YmButton variant="primary" disabled={isAnalyzing} onClick={handleAnalyze}>
                     {isAnalyzing ? 'Analyzing...' : 'Analyze →'}
                   </YmButton>
                 </div>
               </>
             ) : (
               <>
-                <div style={{ fontWeight: 'bold', fontSize: 13, visibility: 'hidden' }}>
-                  placeholder
-                </div>
+                <div style={{ fontWeight: 'bold', fontSize: 13, visibility: 'hidden' }}>placeholder</div>
                 <div
                   className="ym-inset"
                   style={{

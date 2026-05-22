@@ -1,0 +1,66 @@
+'use client';
+
+import { YmButton } from '@/app/components/ym/YmButton';
+import { MarkdownPanel } from '@/app/components/ym/MarkdownPanel';
+import { ChatPanel } from '@/app/components/ym/ChatPanel';
+import type { useChat } from '@/app/hooks/use-chat';
+
+export const TABS = ['Company', 'JDMatch', 'Feedback', 'Generate'] as const;
+export type Tab = (typeof TABS)[number];
+
+type AnalysisData = {
+  company: string | null;
+  jdMatch: string | null;
+  feedback: string | null;
+};
+
+type Props = {
+  selectedName: string;
+  tab: Tab;
+  setTab: (tab: Tab) => void;
+  analysisData: AnalysisData | null;
+  getProcessStatus: (type: string) => string | null;
+  onBack: () => void;
+  chat: ReturnType<typeof useChat>;
+};
+
+export function AnalysisReport({ selectedName, tab, setTab, analysisData, getProcessStatus, onBack, chat }: Props) {
+  const tabConfig: Record<string, { processType: string; content: string | null | undefined }> = {
+    Company: { processType: 'company', content: analysisData?.company },
+    JDMatch: { processType: 'jdmatch', content: analysisData?.jdMatch },
+    Feedback: { processType: 'feedback', content: analysisData?.feedback },
+  };
+
+  const renderTabContent = () => {
+    if (tab === 'Generate') {
+      return <ChatPanel {...chat} getProcessStatus={getProcessStatus} />;
+    }
+    const cfg = tabConfig[tab] ?? { processType: '', content: null };
+    const status = getProcessStatus(cfg.processType);
+    if (status === 'done' && cfg.content) return <MarkdownPanel>{cfg.content}</MarkdownPanel>;
+    if (status === 'processing' || status === 'pending') return <div style={{ color: '#666', fontStyle: 'italic' }}>Processing...</div>;
+    if (status === 'failed') return <div style={{ color: '#c00', fontStyle: 'italic' }}>Analysis failed for this section.</div>;
+    return <div style={{ color: '#666', fontStyle: 'italic' }}>Click Analyze to generate analysis.</div>;
+  };
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px 0' }}>
+        <YmButton onClick={onBack}>← Back to Job</YmButton>
+        <span style={{ fontWeight: 'bold', fontSize: 13 }}>Analysis: {selectedName}</span>
+      </div>
+
+      <div className="ym-tabs" style={{ marginTop: 6 }}>
+        {TABS.map((t) => (
+          <button key={t} className="ym-tab" data-active={tab === t} onClick={() => setTab(t)}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {renderTabContent()}
+      </div>
+    </>
+  );
+}
