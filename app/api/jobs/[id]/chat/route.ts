@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
-import { coverLetterHistory, messageGenHistory, resumeJob } from '@/app/lib/db/schema';
+import { coverLetterHistory, messageGenHistory, resumeJob, company, jobDescriptionMatch, resume } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { auth } from '@/app/lib/auth';
 import { ChatOpenAI } from '@langchain/openai';
@@ -137,9 +137,33 @@ export async function POST(
       // Build system prompt
       const systemPrompt = mode === 'letter' ? letter_chat_prompt : message_chat_prompt;
 
+      // Fetch context in parallel: company, jdMatch, and resume
+      const [companyRows, jdMatchRows, resumeRows] = await Promise.all([
+        db.select().from(company).where(eq(company.jobId, jobId)),
+        db.select().from(jobDescriptionMatch).where(eq(jobDescriptionMatch.jobId, jobId)),
+        db.select().from(resume).where(eq(resume.id, job[0].resumeId)),
+      ]);
+
+      // Build context string from non-null fields
+      const contextParts: string[] = [];
+      if (jdMatchRows.length > 0 && jdMatchRows[0].content) {
+        contextParts.push(`JD Match info: ${jdMatchRows[0].content}`);
+      }
+      if (companyRows.length > 0 && companyRows[0].content) {
+        contextParts.push(`Company info: ${companyRows[0].content}`);
+      }
+      if (resumeRows.length > 0 && resumeRows[0].content) {
+        contextParts.push(`Resume: ${resumeRows[0].content}`);
+      }
+      if (job[0].content) {
+        contextParts.push(`Job Description: ${job[0].content}`);
+      }
+      const contextString = contextParts.length > 0 ? contextParts.join('\n\n') : '';
+      const fullSystemPrompt = contextString ? `${systemPrompt}\n\n${contextString}` : systemPrompt;
+
       // Call LLM with history
       const result = await writingLlm.invoke([
-        new SystemMessage(systemPrompt),
+        new SystemMessage(fullSystemPrompt),
         ...historyMessages,
         new HumanMessage(userMessage),
       ]);
