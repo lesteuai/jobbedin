@@ -175,14 +175,14 @@ Keep your tone professional, encouraging, but relentlessly candid. Do not sugarc
 const reasoningLlm = new ChatOpenAI({
   modelName: process.env.REASONING_MODEL ?? "meta-llama/llama-3.1-8b-instruct",
   temperature: 0,
-  openAIApiKey: process.env.OPENROUTER_API_KEY,
+  apiKey: process.env.OPENROUTER_API_KEY,
   configuration: { baseURL: 'https://openrouter.ai/api/v1' },
 });
 
 const writingLlm = new ChatOpenAI({
   modelName: process.env.WRITING_MODEL ?? "meta-llama/llama-3.1-8b-instruct",
   temperature: 0.7,
-  openAIApiKey: process.env.OPENROUTER_API_KEY,
+  apiKey: process.env.OPENROUTER_API_KEY,
   configuration: { baseURL: 'https://openrouter.ai/api/v1' },
 });
 
