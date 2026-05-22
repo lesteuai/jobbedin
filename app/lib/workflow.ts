@@ -93,9 +93,9 @@ Provide exactly 3 bullet points highlighting your strongest overlapping skills o
 
 ### Actionable Resume Tweaks
 Provide exactly 3 highly specific suggestions on how to rephrase your existing bullets. You MUST provide a concrete "Before & After" example for each.
-* **[Focus Area 1]:** [Specific instruction. E.g., 'Change "Managed databases" to "Optimized PostgreSQL for high-availability" to hit the JD's scalability requirement.']
-* **[Focus Area 2]:** [Specific instruction with a concrete Before/After example.]
-* **[Focus Area 3]:** [Specific instruction with a concrete Before/After example.]`;
+* [Specific instruction. E.g., 'Change "Managed databases" to "Optimized PostgreSQL for high-availability" to hit the JD's scalability requirement.']
+* [Specific instruction with a concrete Before/After example.]
+* [Specific instruction with a concrete Before/After example.]`;
 
 const generate_letter_prompt = `Act as an expert Career Coach. Write a highly tailored, professional cover letter for the candidate.
 You have been provided with:
@@ -118,6 +118,7 @@ const feedback_prompt = `**System Prompt:** Act as a Senior Technical Recruiter 
 
 Please follow this step-by-step process for your review:
 CRITICAL VOICE INSTRUCTION: Speak directly to the user. You MUST use the second-person perspective ("you", "your"). NEVER use the user's name, and NEVER refer to them in the third person (e.g., do not say "Jake has experience" or "the candidate is").
+USE BULLET POINTS WITH THE EXACT BOLDED PREFIXES AS SHOWN BELOW. Do not output plain bullets without the prefixes. Do not include any numbered lists or other formatting. Your feedback MUST be structured strictly according to the Markdown format below, which will be rendered in our UI. Do not include any conversational filler before or after the Markdown.
 
 ### **Step 1: Structural, ATS, Red Flags, & Immigration Logistics**
 *   **ATS & AI Scanner Check:** Evaluate the format. HR software cannot read complex columns, graphics, or weird fonts. Warn the student if their layout will fail an ATS parser.
