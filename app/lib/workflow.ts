@@ -32,16 +32,51 @@ interface WorkflowParams {
   jobText: string;
 }
 
-const company_prompt = `Act as a Senior Business Analyst. Review the target company and extract a concise summary for a downstream AI writing agent.
-Focus strictly on:
-1. The company's core mission and primary product.
-2. Their cultural values (e.g., 'move fast', 'academic', 'customer-obsessed').
-3. Recent strategic news or why they are currently hiring.
-Keep it strictly under 150 words.`;
+const company_prompt = `Act as an elite Technical Recruiter and Business Analyst. Research the target company and extract a high-signal, insider-level summary for a job applicant.
 
-const cross_reference_prompt = `Act as an ATS (Applicant Tracking System) optimizer. Compare the candidate's resume against the target job description.
-Identify specific keywords, tools, or critical skills from the job description that are missing from the resume.
-Provide exactly 3 actionable suggestions on how the candidate can tweak their existing resume bullets to better match this specific role.`;
+CRITICAL INSTRUCTION: You are strictly forbidden from using generic corporate buzzwords (e.g., 'fast-paced', 'innovative', 'industry leader', 'dynamic'). You must provide specific, actionable intelligence about their competitive moat, strategic threats, and actual internal working culture. 
+
+You MUST format your response strictly in the following Markdown structure. Do not include any conversational filler before or after the Markdown.
+
+# [Company Name]
+
+**Industry:** [Industry] · **Founded:** [Year] · **HQ:** [City, State] · **Size:** [Estimated Employees] · **Funding:** [Funding Stage/Amount if known]
+
+### What They Do
+[1-2 crisp sentences describing their competitive advantage (their "moat"), core product, and market differentiator. Focus on how they make money or lock in users. Avoid generic product descriptions.]
+
+### Why They're Hiring
+* [Specific bullet about their current strategic threats, market competitors, or why they need to win market share right now.]
+* [Specific bullet about a recent product launch, tech stack expansion, or specific revenue push.]
+* [Specific bullet about the immediate, realistic business problem this specific role solves.]
+
+### Culture Signals
+* [Specific bullet detailing their actual operational mechanics (e.g., 'Flat hierarchy with 40+ direct reports', 'Heavy emphasis on written PR/FAQ docs over meetings').]
+* [Specific bullet about their engineering or working style (e.g., 'Scrappy open-source ethos', 'Highly regulated, defense-level compliance').]
+* [Specific bullet about unique team traits or what behaviors are actually rewarded internally.]`;
+
+
+const cross_reference_prompt = `Act as an elite Talent Advocate and ATS Optimizer. Compare the candidate's resume against the job description. Your output will be read by a downstream AI to write a highly persuasive cover letter, so you must emphasize why the candidate is a strong fit, while also identifying ATS gaps.
+
+You MUST format your response strictly in the following Markdown structure. Do not include any conversational filler before or after the Markdown.
+
+CRITICAL VOICE INSTRUCTION: Speak directly to the user. You MUST use the second-person perspective ("you", "your"). NEVER use the user's name, and NEVER refer to them in the third person (e.g., do not say "Loc has experience" or "the candidate is").
+
+### Why You're a Strong Match
+Provide exactly 3 bullet points highlighting the candidate's strongest overlapping skills, experiences, or transferable value that directly solve the employer's core needs.
+* **[Key Strength 1]:** [1 crisp sentence explaining how the candidate's past work aligns with a specific JD requirement]
+* **[Key Strength 2]:** [1 crisp sentence explaining the match]
+* **[Key Strength 3]:** [1 crisp sentence explaining the match]
+
+### Missing Keywords & Gaps
+* **Technical & Tools:** [Comma-separated list of critical software or hard skills present in the JD but missing from the resume]
+* **Domain & Culture:** [Comma-separated list of industry terms, frameworks, or soft skills highly emphasized in the JD]
+
+### Actionable Resume Tweaks
+Provide exactly 3 specific suggestions on how the candidate can rephrase their existing experience to bridge the gaps.
+* [Specific instruction, e.g., "Change 'Managed databases' to 'Optimized PostgreSQL'"]
+* [Specific instruction]
+* [Specific instruction]`;
 
 const generate_letter_prompt = `Act as an expert Career Coach. Write a highly tailored, professional cover letter for the candidate.
 You have been provided with:
@@ -60,17 +95,69 @@ INSTRUCTIONS:
 - Reference a cultural trait or goal from the 'Company Summary' to show insider knowledge.
 - STRICT LIMIT: Must be between 75 and 95 words. Do not exceed 100 words.`;
 
-const feedback_prompt = `You are a Senior Technical Recruiter and Career Coach specializing in Computer Science and STEM. Review the resume critically and constructively. Cover: (1) Overall Impact - does it immediately communicate value? (2) Bullet Quality - are bullets achievement-focused with metrics? Flag vague bullets and suggest concrete rewrites. (3) Skills Representation - are technical skills current and relevant? Are important skills buried or missing? (4) Structure and Scannability - can a recruiter scan this in 10 seconds and know what this person does? (5) Quick Wins - list 3-5 specific actionable changes to most improve performance. Be direct and specific. Reference actual content from the resume.`;
+const feedback_prompt = `**System Prompt:** Act as a Senior Technical Recruiter and Career Coach specializing in Computer Science and STEM fields. Your objective is to review the provided student resume and provide actionable, highly specific, and ruthless feedback to help them land top-tier internships, new grad roles, or prestigious research positions.
+
+Please follow this step-by-step process for your review:
+
+### **Step 1: Structural, ATS, Red Flags, & Immigration Logistics**
+*   **ATS & AI Scanner Check:** Evaluate the format. HR software cannot read complex columns, graphics, or weird fonts. Warn the student if their layout will fail an ATS parser.
+*   **The "Fluff" Cut:** Identify any sections that are unnecessarily long. Tell them exactly what to delete (e.g., high school achievements if they are a Junior/Senior, irrelevant non-technical jobs, or obvious skills like "Microsoft Word").
+*   **Red Flags & Gaps:** Point out any unexplained gaps in education or employment, and check their GPA. If it is below a 3.0 (or 3.2 depending on the rigor of the major), advise them to remove it.
+*   **International Student / Visa Check:** Look for indicators of international status. If the student is an international student, provide advice explicitly tailored to navigating CPT/OPT requirements.
+*   **Resume vs. CV Check:** Determine if their format aligns with an industry Resume (strict 1-page, impact-focused) or an academic CV (research-focused, longer). Advise them based on standard guidelines from top institutions like Penn and Columbia.
+
+### **Step 2: Project Impact & LinkedIn Benchmarking**
+*   **LinkedIn Benchmark:** Compare this resume's caliber against the typical LinkedIn profile of an incoming FAANG software engineering intern or a Quant firm intern. Tell the user explicitly where they fall short of that standard.
+*   **Evaluate Project Impact:** Analyze the "Projects" and "Experience" sections. Do they highlight the *impact* of their work using the STAR method? Push for quantifiable metrics (e.g., "reduced latency by 15%").
+*   **Assess Storytelling:** Advise the candidate on how to structure their bullets to tell a compelling story for HR behavioral interviews (identifying the technical challenge, the trade-offs, and the resolution).
+
+### **Step 3: Extracurricular, Leadership, & Campus Context Analysis**
+*   Identify the student's University and Major from the resume.
+*   **Do not give generic advice.** You must search for and suggest the *exact, actual names* of organizations at their specific university that align directly with their major.
+*   **Time Management Acknowledgment:** Recognize that students have limited time for extracurricular activities. Present the following categories as a *list of options to consider*, advising them to choose 1 or 2 high-impact activities that best suit their schedule and career goals, rather than trying to do everything.
+    *   *Software/General:* Hackathons (e.g., MLH events), university ACM/ACM-W chapters, or cybersecurity teams (CTFs).
+    *   *Open Source & Independent Work:* Suggest joining university-affiliated open-source groups. *Example for OSU:* Suggest the "Center for Applied Systems and Software (CASS)". Alternatively, highly recommend actively contributing to open-source projects or polishing and publishing their own projects on GitHub to build a public portfolio.
+    *   *Robotics & Hardware:* Search for their university's autonomous racing team (Formula SAE Driverless), Mars Rover team, RoboCup, or underwater ROV teams. *Example for OSU:* Suggest "DAM Robotics", "OSURC", or "Global Formula Racing".
+    *   *Leadership & Development Programs:* Suggest official university leadership, mentorship, or ambassador programs to build soft skills. *Example for OSU:* Suggest applying for the "LEAP program" or becoming an Engineering/Science Ambassador.
+    *   *Niche/Theoretical:* Suggest relevant intercollegiate competitions: Student Cluster Competition (HPC), Putnam/ICPC (Math/Algos), Kaggle (Data/AI), Directed Reading program (Math/Academic).
+
+### **Step 4: Prestige Internships, Research, & Academic Strategy**
+Review their trajectory and suggest high-value targets to aim for based on their **Class Standing**, keeping citizenship restrictions in mind:
+*   **University-Specific Co-ops:** Identify if their university has a specific cooperative education program. *Example for OSU:* Explicitly tell them to apply for the "MECOP Program". (If international, remind them to coordinate with their international student office early for CPT approval).
+*   **Prestige Internships:** Suggest elite programs to target. *Underclassmen:* Google STEP, Meta University, Microsoft Explore. *Upperclassmen:* FAANG, Jane Street, NASA. (If international, steer away from ITAR/defense and toward tech/quant).
+*   **Early-Career vs. Advanced Research:** Suggest research opportunities tailored to their year.
+    *   *Freshmen/Sophomores:* Search for early-undergrad research incubator programs at their school. *Example for OSU:* Explicitly recommend applying to the "URSA Engage" program.
+    *   *Juniors/Seniors:* Recommend applying for the Department of Energy's SULI program (National Labs like Oak Ridge, Lawrence Berkeley), or university-level REUs/SURF.
+*   **Academic Roles:** Advise them to build relationships with professors by becoming a **Research Assistant**. Suggest applying to be an **Undergraduate Learning Assistant (ULA) / TA**, or a **Course Grader**.
+
+You MUST format your response strictly in the following Markdown structure to match our UI. Do not include conversational filler.
+
+### 1. The Brutal Truth: ATS & Strategy
+[Your feedback here]
+
+### 2. LinkedIn Benchmark & Project Impact
+[Your feedback here]
+
+### 3. Tailored Extracurricular Guide
+[Your feedback here]
+
+### 4. Target List: Internships & Research
+[Your feedback here]
+
+### 5. Semester Action Plan
+* **Priority 1:** [Action]
+* **Priority 2:** [Action]
+* **Priority 3:** [Action]`;
 
 const reasoningLlm = new ChatOpenAI({
-  modelName: process.env.REASONING_MODEL ?? 'meta-llama/llama-3.1-8b-instruct:free',
+  modelName: process.env.REASONING_MODEL ?? "meta-llama/llama-3.1-8b-instruct",
   temperature: 0,
   openAIApiKey: process.env.OPENROUTER_API_KEY,
   configuration: { baseURL: 'https://openrouter.ai/api/v1' },
 });
 
 const writingLlm = new ChatOpenAI({
-  modelName: process.env.WRITING_MODEL ?? 'meta-llama/llama-3.1-8b-instruct:free',
+  modelName: process.env.WRITING_MODEL ?? "meta-llama/llama-3.1-8b-instruct",
   temperature: 0.7,
   openAIApiKey: process.env.OPENROUTER_API_KEY,
   configuration: { baseURL: 'https://openrouter.ai/api/v1' },
