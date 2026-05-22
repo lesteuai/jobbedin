@@ -1,0 +1,9 @@
+@docs/langgraph/temp_implement.md is doc for @app/api/analyze/route.ts. I need to implement this into the app.
+First, re create the langgraph workflow to be: START -> ResearchCompany, CrossRef, ResumeFeedback run in parallel. GenerateLetter and GenerateMsg depend on ResearchCompany, CrossRef.
+Second, implement this into analyze of the job page by the following:
+- Check if all processes of that resumeJob are done. If yes, just get the data from the database and display. If not:
++ get resume and job from resume and resumeJob table in database
++ insert into prompt 
++ set processes of company, jdmatch, resumefeedback to processing, letter and message to pending
++ run the workflow. When ResearchCompany, CrossRef, ResumeFeedback are completed, set processes to done, letter and message to processing. Generate letter and message, then set those two processes to done.
+- While the workflow is running, check status of those processes every one second. Any one process is done, show the result. If not, cover it with some text like Processing or Please wait.
