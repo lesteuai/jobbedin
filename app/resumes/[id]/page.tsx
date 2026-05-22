@@ -44,6 +44,9 @@ export default function ResumesJobsPage() {
   const [chatDraft, setChatDraft] = useState('');
   const [chatsLoaded, setChatsLoaded] = useState(false);
   const [isSendingChat, setIsSendingChat] = useState(false);
+  const [isAiTyping, setIsAiTyping] = useState(false);
+  const [typingDots, setTypingDots] = useState('.');
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const selected = jobs.find((j) => j.id === selectedJobId);
   const pendingName = jobs.find((j) => j.id === pendingDelete)?.name;
@@ -127,6 +130,24 @@ export default function ResumesJobsPage() {
   useEffect(() => () => stopPolling(), []);
 
   const lines = chats[mode];
+
+  useEffect(() => {
+    if (!isAiTyping) return;
+    const interval = setInterval(() => {
+      setTypingDots((prev) => {
+        if (prev === '.') return '..';
+        if (prev === '..') return '...';
+        return '.';
+      });
+    }, 400);
+    return () => clearInterval(interval);
+  }, [isAiTyping]);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [lines, isAiTyping]);
   const canSend = chatDraft.trim().length > 0 && !isSendingChat;
   const canClear = lines.length > 0;
 
@@ -136,6 +157,12 @@ export default function ResumesJobsPage() {
     const userMessage = chatDraft.trim();
     setChatDraft('');
     setIsSendingChat(true);
+
+    setChats((p) => ({
+      ...p,
+      [mode]: [...p[mode], { role: 'user', text: userMessage }],
+    }));
+    setIsAiTyping(true);
 
     try {
       const res = await fetch(`/api/jobs/${selectedJobId}/chat`, {
@@ -153,18 +180,19 @@ export default function ResumesJobsPage() {
 
       setChats((p) => ({
         ...p,
-        [mode]: [
-          ...p[mode],
-          { role: 'user', text: userMessage },
-          { role: 'ai', text: aiReply },
-        ],
+        [mode]: [...p[mode], { role: 'ai', text: aiReply }],
       }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error sending message';
       showError(msg);
       setChatDraft(userMessage);
+      setChats((p) => ({
+        ...p,
+        [mode]: p[mode].slice(0, -1),
+      }));
     } finally {
       setIsSendingChat(false);
+      setIsAiTyping(false);
     }
   };
 
@@ -307,6 +335,7 @@ export default function ResumesJobsPage() {
                   </div>
 
                   <div
+                    ref={chatContainerRef}
                     className="ym-inset"
                     style={{
                       flex: 1,
@@ -325,17 +354,29 @@ export default function ResumesJobsPage() {
                       if (modeStatus === 'failed') {
                         return <div style={{ color: '#c00', fontStyle: 'italic' }}>Generation failed. Please re-analyze.</div>;
                       }
-                      return lines.length === 0 ? (
-                        <div style={{ color: '#888', fontStyle: 'italic' }}>(No messages yet. Start typing below.)</div>
-                      ) : (
-                        lines.map((l, i) => (
-                          <div key={i} className="ym-chat-line">
-                            <span className={l.role === 'user' ? 'ym-bubble-user' : 'ym-bubble-ai'}>
-                              {l.role === 'user' ? 'You: ' : 'JobbedIn-AI: '}
-                            </span>
-                            {l.text}
-                          </div>
-                        ))
+                      return (
+                        <>
+                          {lines.length === 0 && !isAiTyping ? (
+                            <div style={{ color: '#888', fontStyle: 'italic' }}>(No messages yet. Start typing below.)</div>
+                          ) : (
+                            <>
+                              {lines.map((l, i) => (
+                                <div key={i} className="ym-chat-line">
+                                  <span className={l.role === 'user' ? 'ym-bubble-user' : 'ym-bubble-ai'}>
+                                    {l.role === 'user' ? 'You: ' : 'JobbedIn-AI: '}
+                                  </span>
+                                  {l.text}
+                                </div>
+                              ))}
+                              {isAiTyping && (
+                                <div className="ym-chat-line">
+                                  <span className="ym-bubble-ai">JobbedIn-AI: </span>
+                                  {typingDots}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </>
                       );
                     })()}
                   </div>
