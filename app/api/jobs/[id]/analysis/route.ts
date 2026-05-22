@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
-import { company, jobDescriptionMatch, resumeFeedback, process as processTable, resumeJob } from '@/app/lib/db/schema';
+import { company, jobDescriptionMatch, resumeFeedback, coverLetterHistory, messageGenHistory, process as processTable, resumeJob } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { auth } from '@/app/lib/auth';
 
@@ -23,15 +23,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const [companyRow] = await db.select().from(company).where(eq(company.jobId, jobId));
-    const [jdMatchRow] = await db.select().from(jobDescriptionMatch).where(eq(jobDescriptionMatch.jobId, jobId));
-    const [feedbackRow] = await db.select().from(resumeFeedback).where(eq(resumeFeedback.jobId, jobId));
-    const processes = await db.select().from(processTable).where(eq(processTable.jobId, jobId));
+    const [companyRow, jdMatchRow, feedbackRow, letterRow, messageRow, processes] = await Promise.all([
+      db.select().from(company).where(eq(company.jobId, jobId)).then(rows => rows[0]),
+      db.select().from(jobDescriptionMatch).where(eq(jobDescriptionMatch.jobId, jobId)).then(rows => rows[0]),
+      db.select().from(resumeFeedback).where(eq(resumeFeedback.jobId, jobId)).then(rows => rows[0]),
+      db.select().from(coverLetterHistory).where(eq(coverLetterHistory.jobId, jobId)).then(rows => rows[0]),
+      db.select().from(messageGenHistory).where(eq(messageGenHistory.jobId, jobId)).then(rows => rows[0]),
+      db.select().from(processTable).where(eq(processTable.jobId, jobId)),
+    ]);
 
     return NextResponse.json({
       company: companyRow?.content || null,
       jdMatch: jdMatchRow?.content || null,
       feedback: feedbackRow?.content || null,
+      letterConversation: letterRow?.conversation ?? null,
+      messageConversation: messageRow?.conversation ?? null,
       processes: processes.map((p) => ({
         processType: p.processType,
         status: p.status,
