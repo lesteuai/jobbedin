@@ -1,0 +1,81 @@
+We’re hiring a founding technical builder at ChatGPTree 🌲
+
+At ChatGPTree, we’re building the sustainability layer for AI: helping founders, creators, and companies plant trees to help sequester the estimated carbon emissions associated with AI token consumption.
+
+As AI scales globally, energy usage and computational demand scale with it. We believe the future of AI should also include stewardship, regeneration, and responsibility built directly into the ecosystem itself.
+
+Our belief is simple:
+
+As AI grows, forests grow too.
+
+We’ve already planted thousands of trees, launched consumer applications, secured sustainability API partnerships, and are now building embedded tooling, marketplaces, and infrastructure for responsible AI products.
+
+Now we’re looking for a:
+
+    Technical Cofounder
+    Founding Engineer
+    or exceptionally talented builder
+
+This begins as a paid contract role with a pathway toward:
+
+    equity
+    long-term leadership
+    and potentially CTO-level ownership.
+
+You’ll help architect and ship:
+
+    AI applications
+    sustainability APIs
+    embedded tree-planting systems
+    Stripe subscription infrastructure
+    marketplaces
+    dashboards
+    AI chat interfaces
+    and white-label tooling for the future of sustainable AI.
+
+Current stack includes:
+
+React / Next.js / Vite / Node / FastAPI / Supabase / Stripe / Vercel / AI APIs.
+
+We care less about perfect resumes and more about:
+
+    product instinct
+    execution ability
+    speed
+    curiosity
+    and mission alignment.
+
+Before applying, please explore our products + mission here:
+
+ChatGPTree Linktree
+
+Priority will be given to candidates who:
+
+    Send their resume + portfolio to hello@chatgptree.ai
+    Plant at least one tree with us 🌲
+
+(You can actually do this for free by taking our AI Builders Survey on the Linktree.)
+
+Especially interested in people who:
+
+    have shipped real products
+    built independently
+    contributed to startups
+    or have unconventional backgrounds with exceptional execution ability.
+
+If you’ve been looking for a mission-driven company at the intersection of AI, climate, infrastructure, and culture- this may be for you.
+
+Email: hello@chatgptree.ai
+
+
+Qualifications
+
+    Proficiency in full-stack development, including front-end and back-end technologies, and experience building scalable platforms
+    iOS and React Native Experience is essential 
+    Expertise in AI/ML technologies, chatbot development, and API integration with third-party services
+    Strong understanding of sustainable technologies, environmental metrics, or carbon offset strategies
+    Experience with cloud platforms, database architecture, and deployment pipelines
+    Exceptional collaboration and communication skills, with a passion for environmental sustainability
+    Ability to work independently in a remote setting with entrepreneurial drive
+    Previous experience in a founding or leadership role in a technology startup is a plus
+    Bachelor’s or Master’s degree in Computer Science, Engineering, or a related field (or equivalent experience)

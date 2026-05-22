@@ -3,11 +3,24 @@ import { db } from '@/app/lib/db';
 import { coverLetterHistory, messageGenHistory, resumeJob } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { auth } from '@/app/lib/auth';
+import { ChatOpenAI } from '@langchain/openai';
+import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
 
 type ChatLine = {
   role: 'user' | 'ai';
   text: string;
 };
+
+const letter_chat_prompt = 'You are a cover letter editor. The user will give feedback on their cover letter. Revise it based on their feedback. Return only the revised letter, under 300 words.';
+
+const message_chat_prompt = 'You are a recruiter message editor. The user will give feedback on their recruiter outreach message. Revise it based on their feedback. Strict limit: 75-100 words. Return only the revised message.';
+
+const writingLlm = new ChatOpenAI({
+  modelName: process.env.WRITING_MODEL ?? 'meta-llama/llama-3.1-8b-instruct',
+  temperature: 0.7,
+  apiKey: process.env.OPENROUTER_API_KEY,
+  configuration: { baseURL: 'https://openrouter.ai/api/v1' },
+});
 
 export async function GET(
   request: NextRequest,
@@ -70,21 +83,15 @@ export async function POST(
   try {
     const { id: jobId } = await params;
     const body = await request.json();
-    const { mode, conversation } = body as {
+    const { mode, userMessage, conversation } = body as {
       mode: 'letter' | 'message';
-      conversation: ChatLine[];
+      userMessage?: string;
+      conversation?: ChatLine[];
     };
 
     if (!mode || !['letter', 'message'].includes(mode)) {
       return NextResponse.json(
         { error: 'Invalid mode. Must be "letter" or "message"' },
-        { status: 400 }
-      );
-    }
-
-    if (!Array.isArray(conversation)) {
-      return NextResponse.json(
-        { error: 'conversation must be an array' },
         { status: 400 }
       );
     }
@@ -100,10 +107,67 @@ export async function POST(
 
     const table = mode === 'letter' ? coverLetterHistory : messageGenHistory;
 
-    await db.delete(table).where(eq(table.jobId, jobId));
-    await db.insert(table).values({ jobId, userId: session.user.id, conversation });
+    // Legacy path: clear conversation
+    if (conversation !== undefined && userMessage === undefined) {
+      if (!Array.isArray(conversation)) {
+        return NextResponse.json(
+          { error: 'conversation must be an array' },
+          { status: 400 }
+        );
+      }
 
-    return NextResponse.json({ success: true });
+      await db.delete(table).where(eq(table.jobId, jobId));
+      await db.insert(table).values({ jobId, userId: session.user.id, conversation });
+
+      return NextResponse.json({ success: true });
+    }
+
+    // AI chat path: accept userMessage and call LLM
+    if (userMessage !== undefined) {
+      // Fetch existing conversation
+      const existing = await db.select().from(table).where(eq(table.jobId, jobId));
+      const existingConversation = existing.length > 0 ? (existing[0].conversation as ChatLine[] | null) : null;
+      const historyLines = existingConversation || [];
+
+      // Convert history to LangChain messages
+      const historyMessages = historyLines.map((line) =>
+        line.role === 'user' ? new HumanMessage(line.text) : new AIMessage(line.text)
+      );
+
+      // Build system prompt
+      const systemPrompt = mode === 'letter' ? letter_chat_prompt : message_chat_prompt;
+
+      // Call LLM with history
+      const result = await writingLlm.invoke([
+        new SystemMessage(systemPrompt),
+        ...historyMessages,
+        new HumanMessage(userMessage),
+      ]);
+
+      const aiReply = typeof result.content === 'string' ? result.content : String(result.content);
+
+      // Build updated conversation
+      const updatedConversation: ChatLine[] = [
+        ...historyLines,
+        { role: 'user', text: userMessage },
+        { role: 'ai', text: aiReply },
+      ];
+
+      // Upsert to DB (delete old, insert new)
+      await db.delete(table).where(eq(table.jobId, jobId));
+      await db.insert(table).values({
+        jobId,
+        userId: session.user.id,
+        conversation: updatedConversation,
+      });
+
+      return NextResponse.json({ reply: aiReply });
+    }
+
+    return NextResponse.json(
+      { error: 'Either userMessage or conversation must be provided' },
+      { status: 400 }
+    );
   } catch (error) {
     console.error('Error saving chat history:', error);
     return NextResponse.json(

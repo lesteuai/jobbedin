@@ -14,18 +14,20 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 
 **Data flow:**
 1. User signs in/up on the login page via better-auth (email/password authentication)
-2. User navigates to /resumes or /jobs pages; API calls validate session and return 401 if not authenticated
+2. User navigates to /resumes page; API calls validate session and return 401 if not authenticated
 3. User uploads resumes (PDF, TXT, MD) on /resumes page (scoped to their userId); PDF content is extracted via pdf-parse
-4. User navigates to /jobs to add job descriptions (pasted as text; scoped to their userId)
-5. User clicks "Analyze" to trigger the job analysis workflow
-6. Frontend POST to `/api/jobs/[id]/analyze` returns 202 immediately and workflow starts asynchronously
-7. LangGraph workflow (app/lib/workflow.ts) executes five nodes in parallel and sequential stages:
+4. User clicks "To Job" button, navigating to `/resumes/[resumeId]` which calls selectResume(resumeId) on mount
+5. User adds job descriptions on /resumes/[resumeId] page (pasted as text; scoped to their userId)
+6. User clicks "Analyze" to trigger the job analysis workflow
+7. Frontend POST to `/api/jobs/[id]/analyze` returns 202 immediately and workflow starts asynchronously
+8. LangGraph workflow (app/lib/workflow.ts) executes five nodes in parallel and sequential stages:
    - Stage 1 (parallel): ResearchCompany (Tavily search + agent), CrossRef (JD vs resume match), ResumeFeedback (critical review)
    - Stage 2 (depends on Company + CrossRef): GenerateLetter and GenerateMsg nodes run in parallel
    - Each node writes results to PostgreSQL and updates its process status
-8. Frontend polls `/api/jobs/[id]/analysis` every 1 second to display results incrementally
-9. When all 5 process statuses are Done, UI loads complete analysis and generated cover letter/message from database
-10. UI provides chat interface for iterative refinement of cover letter and message outputs
+9. Frontend polls `/api/jobs/[id]/analysis` every 1 second to display results incrementally
+10. When all 5 process statuses are Done, UI loads complete analysis and generated cover letter/message from database
+11. UI provides chat interface for iterative refinement of cover letter and message outputs
+12. User sends message via chat, frontend POSTs `{ mode, userMessage }` to `/api/jobs/[id]/chat`, LLM generates reply using full conversation history, returns `{ reply }`, and persists updated conversation to database
 
 **Key architectural layers:**
 - **Frontend**: Client-side React components with `use client` directives (all user-facing pages and interactive components)
@@ -41,8 +43,8 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 
 - `app/layout.tsx` — Root layout with metadata and AppStoreProvider wrapper
 - `app/page.tsx` — Login page with better-auth sign-in/sign-up integration
-- `app/resumes/page.tsx` — Resume management and preview (API-protected; userId-scoped)
-- `app/jobs/page.tsx` — Job management, analysis tabs, and AI generation chat interface (API-protected; userId-scoped)
+- `app/resumes/page.tsx` — Resume management and preview (API-protected; userId-scoped); "To Job" button navigates to `/resumes/[resumeId]`
+- `app/resumes/[id]/page.tsx` — Job management, analysis tabs, and AI generation chat interface for a selected resume (API-protected; userId-scoped); calls selectResume(resumeId) on mount via useParams()
 - `app/lib/app-store.tsx` — React Context providing global resume/job state and CRUD operations
 - `app/lib/auth.ts` — better-auth server configuration with Drizzle ORM adapter
 - `app/lib/auth-client.ts` — better-auth client exports (signIn, signUp, signOut, useSession hook)
@@ -92,8 +94,10 @@ jobbedin/
 │   ├── layout.tsx                # Root layout with AppStoreProvider
 │   ├── globals.css               # Yahoo Messenger design system styles
 │   ├── page.tsx                  # Login page with better-auth sign-in/sign-up
-│   ├── resumes/page.tsx          # Resume management page (API-protected via session validation)
-│   ├── jobs/page.tsx             # Job analysis and generation page (API-protected via session validation)
+│   ├── resumes/
+│   │   ├── page.tsx              # Resume management page (API-protected via session validation)
+│   │   └── [id]/
+│   │       └── page.tsx          # Job analysis page for selected resume (API-protected; selectResume on mount)
 │   └── favicon.ico
 ├── docs/                          # Reference and design documentation
 │   ├── frontend/                 # Design system and style guides
@@ -124,8 +128,8 @@ jobbedin/
 - `app/lib/workflow.ts` — LangGraph multi-agent workflow; exports runWorkflow() which orchestrates ResearchCompany, CrossRef, ResumeFeedback (parallel from START) -> GenerateLetter, GenerateMsg (depend on Company + CrossRef); each node writes to DB and updates process status; uses OpenRouter API via Llama 3.1 models and Tavily search
 - `app/lib/db/schema.ts` — Drizzle ORM table definitions: better-auth tables (user, session, account, verification) + data tables (resumes, resume_jobs, companies, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history, process); all non-auth tables have userId FK and updatedAt $onUpdate
 - `app/lib/db/index.ts` — PostgreSQL client initialization with environment variable validation and Drizzle ORM schema setup
-- `app/resumes/page.tsx` — Resume list, selection, markdown preview; file upload triggers userId-scoped API POST and state refresh; supports .pdf, .txt, .md
-- `app/jobs/page.tsx` — Central hub for job analysis: tabs for Company, JDMatch, Feedback, and Generate (chat); all operations userId-scoped
+- `app/resumes/page.tsx` — Resume list, selection, markdown preview; file upload triggers userId-scoped API POST and state refresh; supports .pdf, .txt, .md; "To Job" button navigates to `/resumes/${selectedResumeId}`
+- `app/resumes/[id]/page.tsx` — Job analysis hub for a selected resume: accepts resumeId from URL via useParams(), calls selectResume(resumeId) on mount; tabs for Company, JDMatch, Feedback, and Generate (chat); all operations userId-scoped; contains job list, add/delete, analysis, and chat interface
 - `app/api/auth/[...all]/route.ts` — better-auth handler; routes all /api/auth/* requests through better-auth
 - `app/api/resumes/route.ts` — GET all resumes (userId-scoped), POST upload resume with name (userId-scoped); validates session
 - `app/api/resumes/[id]/route.ts` — DELETE resume by id (userId-scoped); validates session
@@ -133,7 +137,7 @@ jobbedin/
 - `app/api/jobs/[id]/route.ts` — DELETE job by id (userId-scoped); validates session
 - `app/api/jobs/[id]/analyze/route.ts` — POST to trigger workflow start (userId-scoped); validates session, checks if already analyzed, clears old results, creates 5 process records with Processing/Pending status, fire-and-forgets runWorkflow() in background, returns 202 immediately
 - `app/api/jobs/[id]/analysis/route.ts` — GET analysis data for a job (userId-scoped); returns company research, jdMatch, feedback, letterConversation, messageConversation, and array of 5 process statuses; used for polling during workflow execution
-- `app/api/jobs/[id]/chat/route.ts` — GET chat history, POST new chat message (userId-scoped); validates session
+- `app/api/jobs/[id]/chat/route.ts` — GET chat history (userId-scoped); POST accepts `{ mode, userMessage }` to invoke ChatOpenAI LLM, builds full message history, generates reply, persists updated conversation, returns `{ reply }`; legacy path `{ mode, conversation }` still supported for clearing (userId-scoped); validates session
 - `app/globals.css` — Complete Yahoo Messenger design system (300+ lines of CSS variables, primitives, and component styles)
 - `app/components/ym/*.tsx` — Modular UI primitives for consistent theming
 - `drizzle.config.ts` — Drizzle Kit configuration for schema migrations and introspection
@@ -256,6 +260,9 @@ The Yahoo Messenger design expects keyboard-friendly navigation. No buttons are 
 
 **Frontend polling and incremental result display:**
 When the user clicks "Analyze", the frontend POSTs to `/api/jobs/[id]/analyze` and receives 202. It then sets `isAnalyzing=true` and calls `startPolling(jobId)` which spawns a setInterval polling loop (every 1 second) that fetches `/api/jobs/[id]/analysis`. The analysis endpoint returns all process statuses, which the frontend displays to show progress (e.g., "Company: Processing", "JDMatch: Done"). As workflow nodes complete, the endpoint also returns their generated content (company, jdMatch, feedback, letterConversation, messageConversation). The polling loop terminates when all 5 processes reach Done or Failed status. This pattern allows real-time visibility into asynchronous workflow progress.
+
+**Chat interface and LLM-driven refinement:**
+In the "Generate" tab, users switch between "Cover Letter" and "Message" modes and iteratively refine generated content. Each mode has its own conversation history persisted to the database. When user sends a message via the chat input, `handleSend()` POSTs `{ mode, userMessage }` to `/api/jobs/[id]/chat`. The route fetches the existing conversation from database, converts all prior messages to LangChain message objects (HumanMessage and AIMessage), appends the new user message, calls ChatOpenAI via OpenRouter with a system prompt (letter_chat_prompt or message_chat_prompt), receives the AI reply, and returns `{ reply }`. The frontend then updates the local chat state immediately and persists the updated conversation (history + user message + ai reply) back to the database for next load. Legacy support: POSTing `{ mode, conversation }` clears and replaces the entire conversation (used by Clear button).
 
 ## Gotchas & Notes
 
