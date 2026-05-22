@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { useSession } from "@/app/lib/auth-client";
 import { YmErrorModal } from "@/app/components/ym/YmErrorModal";
 
 export type Item = { id: string; name: string; content: string };
@@ -17,6 +18,7 @@ type Store = {
   selectResume: (id: string | null) => void;
   selectJob: (id: string | null) => void;
   refreshResumes: () => Promise<void>;
+  clearStore: () => void;
   showError: (message: string) => void;
 };
 
@@ -37,6 +39,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { data: session } = useSession();
 
   const showError = (message: string) => setErrorMessage(message);
   const clearError = () => setErrorMessage(null);
@@ -58,8 +61,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    refreshResumes();
-  }, []);
+    if (session?.user?.id) {
+      refreshResumes();
+    }
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!selectedResumeId) {
@@ -83,6 +88,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     };
     fetchJobs();
   }, [selectedResumeId]);
+
+  const clearStore = () => {
+    setResumes([]);
+    setJobs([]);
+    setSelectedResumeId(null);
+    setSelectedJobId(null);
+  };
 
   const addResume = () => {
     return '';
@@ -141,6 +153,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         selectResume: setSelectedResumeId,
         selectJob: setSelectedJobId,
         refreshResumes,
+        clearStore,
         showError,
       }}
     >

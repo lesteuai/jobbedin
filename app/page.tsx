@@ -4,11 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { authClient } from '@/app/lib/auth-client';
 import { YmButton } from '@/app/components/ym/YmButton';
+import { useAppStore } from '@/app/lib/app-store';
 
 type Mode = 'signin' | 'signup'; // | 'forgot';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { clearStore, refreshResumes } = useAppStore();
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,6 +40,8 @@ export default function LoginPage() {
         if (result.error) {
           setError(result.error.message || 'Sign in failed');
         } else {
+          clearStore();
+          await refreshResumes();
           router.push('/resumes');
         }
       } else if (mode === 'signup') {
@@ -45,6 +49,8 @@ export default function LoginPage() {
         if (result.error) {
           setError(result.error.message || 'Sign up failed');
         } else {
+          clearStore();
+          await refreshResumes();
           router.push('/resumes');
         }
       }

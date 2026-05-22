@@ -102,7 +102,7 @@ export function ChatPanel({
           value={chatDraft}
           onChange={(e) => setChatDraft(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               handleSend();
             }
