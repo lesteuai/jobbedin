@@ -59,14 +59,14 @@ You MUST format your response strictly in the following Markdown structure. Do n
 const cross_reference_prompt = `Act as an elite Talent Advocate and ATS Optimizer. Compare the candidate's resume against the job description. Your output will be read by a downstream AI to write a highly persuasive cover letter, so you must emphasize why the candidate is a strong fit, while also identifying ATS gaps.
 
 You MUST format your response strictly in the following Markdown structure. Do not include any conversational filler before or after the Markdown.
-
+Keep your tone professional, encouraging, but relentlessly candid. Do not sugarcoat weaknesses.
 CRITICAL VOICE INSTRUCTION: Speak directly to the user. You MUST use the second-person perspective ("you", "your"). NEVER use the user's name, and NEVER refer to them in the third person (e.g., do not say "Loc has experience" or "the candidate is").
 
-### Why You're a Strong Match
+### What Is Your Advantage
 Provide exactly 3 bullet points highlighting the candidate's strongest overlapping skills, experiences, or transferable value that directly solve the employer's core needs.
-* **[Key Strength 1]:** [1 crisp sentence explaining how the candidate's past work aligns with a specific JD requirement]
-* **[Key Strength 2]:** [1 crisp sentence explaining the match]
-* **[Key Strength 3]:** [1 crisp sentence explaining the match]
+* [1 crisp sentence explaining how the candidate's past work aligns with a specific JD requirement]
+* [1 crisp sentence explaining the match]
+* [1 crisp sentence explaining the match]
 
 ### Missing Keywords & Gaps
 * **Technical & Tools:** [Comma-separated list of critical software or hard skills present in the JD but missing from the resume]
@@ -132,6 +132,8 @@ Review their trajectory and suggest high-value targets to aim for based on their
 
 You MUST format your response strictly in the following Markdown structure to match our UI. Do not include conversational filler.
 
+Keep your tone professional, encouraging, but relentlessly candid. Do not sugarcoat weaknesses.
+
 ### 1. The Brutal Truth: ATS & Strategy
 [Your feedback here]
 
@@ -145,9 +147,9 @@ You MUST format your response strictly in the following Markdown structure to ma
 [Your feedback here]
 
 ### 5. Semester Action Plan
-* **Priority 1:** [Action]
-* **Priority 2:** [Action]
-* **Priority 3:** [Action]`;
+* [Action]
+* [Action]
+* [Action]`;
 
 const reasoningLlm = new ChatOpenAI({
   modelName: process.env.REASONING_MODEL ?? "meta-llama/llama-3.1-8b-instruct",
