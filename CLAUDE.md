@@ -32,19 +32,19 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 **Key architectural layers:**
 - **Frontend**: Client-side React components with `use client` directives (all user-facing pages and interactive components)
 - **Authentication**: better-auth 1.6.11 with email/password flow and Drizzle ORM adapter; session validation via API route handlers (removed Next.js middleware)
-- **State management**: React Context (AppStore) for cross-page state synchronization; synced to backend API on mount and after mutations
+- **State management**: React Context (AppStore) for cross-page state synchronization; data fetch is session-gated (only runs once `useSession()` returns a user); `clearStore()` resets all state on sign-out
 - **Styling**: Tailwind CSS v4 with unified Yahoo Messenger design system (`ym-` class prefix)
 - **Backend database**: PostgreSQL with Drizzle ORM for type-safe schema and migrations
 - **API layer**: Next.js App Router API routes for resume/job CRUD, analysis data insertion, and chat persistence; all routes validate session via `auth.api.getSession()` and scope data to userId
 - **File handling**: PDF extraction via pdf-parse; TXT and Markdown files read as plain text
-- **AI processing**: LangGraph multi-agent workflow (app/lib/workflow.ts) with 5 nodes orchestrating company research, resume critique, JD matching, cover letter generation, and message generation via OpenRouter API (Llama 3.1 models)
+- **AI processing**: LangGraph multi-agent workflow (app/lib/workflow.ts) with 5 nodes orchestrating company research, resume critique, JD matching, cover letter generation, and message generation via OpenRouter API (Llama 3.1 models); all 5 system prompts centralized in `app/lib/system-prompt.ts` and shared between workflow nodes and the chat refinement route
 
 ## Key Entry Points
 
 - `app/layout.tsx` — Root layout with metadata and AppStoreProvider wrapper
 - `app/page.tsx` — Login page with better-auth sign-in/sign-up integration
 - `app/resumes/page.tsx` — Resume management and preview (API-protected; userId-scoped); "To Job" button navigates to `/resumes/[resumeId]`
-- `app/resumes/[id]/page.tsx` — Job management, analysis tabs, and AI generation chat interface for a selected resume (API-protected; userId-scoped); calls selectResume(resumeId) on mount via useParams()
+- `app/resumes/[id]/page.tsx` — Job management and analysis hub for a selected resume (API-protected; userId-scoped); calls selectResume(resumeId) on mount via useParams(); delegates analysis display to `AnalysisReport` and chat logic to `useChat` hook
 - `app/lib/app-store.tsx` — React Context providing global resume/job state and CRUD operations
 - `app/lib/auth.ts` — better-auth server configuration with Drizzle ORM adapter
 - `app/lib/auth-client.ts` — better-auth client exports (signIn, signUp, signOut, useSession hook)
@@ -74,22 +74,26 @@ jobbedin/
 │   │   │           └── route.ts  # GET/POST - chat history persistence (userId-scoped)
 │   │   └── hello/route.ts        # Test endpoint (POST/GET)
 │   ├── components/
+│   │   ├── AnalysisReport.tsx    # Analysis tabs (Company/JDMatch/Feedback/Generate) and tab content renderer
 │   │   └── ym/                   # Yahoo Messenger UI component library
 │   │       ├── AppFrame.tsx      # Main app shell with titlebar; sign-out calls authClient.signOut()
+│   │       ├── ChatPanel.tsx     # Chat UI for cover letter/message refinement (mode switcher, message list, input)
 │   │       ├── Sidebar.tsx       # Reusable sidebar for list management
 │   │       ├── YmButton.tsx      # Styled button (default/primary variants)
 │   │       ├── YmModal.tsx       # Confirmation dialog
 │   │       └── MarkdownPanel.tsx # Markdown renderer for content display
 │   ├── lib/
-│   │   ├── app-store.tsx         # React Context for resume/job state management; API-backed
+│   │   ├── app-store.tsx         # React Context for resume/job state management; session-gated data fetch; clearStore() on sign-out
 │   │   ├── auth.ts               # better-auth server configuration with Drizzle ORM adapter
 │   │   ├── auth-client.ts        # better-auth client exports for frontend consumption
+│   │   ├── system-prompt.ts      # All 5 LLM system prompts: company_prompt, cross_reference_prompt, generate_letter_prompt, generate_msg_prompt, feedback_prompt
 │   │   ├── utils.ts              # Utility: cn() for class merging (clsx + tailwind-merge)
 │   │   ├── workflow.ts           # LangGraph multi-agent workflow: 5 nodes orchestrating analysis, research, generation
 │   │   └── db/
 │   │       ├── index.ts          # Drizzle ORM initialization and PostgreSQL client
 │   │       └── schema.ts          # Database schema (user, session, account, verification + data tables + process tracking)
 │   ├── hooks/
+│   │   ├── use-chat.ts           # useChat hook: chat state, send/clear handlers, typing indicator, auto-scroll, chat history loading
 │   │   └── use-mobile.tsx        # Mobile breakpoint detection hook
 │   ├── layout.tsx                # Root layout with AppStoreProvider
 │   ├── globals.css               # Yahoo Messenger design system styles
@@ -124,12 +128,16 @@ jobbedin/
 - `app/page.tsx` — Login page with better-auth sign-in/sign-up forms; public (no middleware protection)
 - `app/lib/auth.ts` — better-auth server initialization with Drizzle ORM adapter; uses BETTER_AUTH_SECRET and ORIGIN env vars
 - `app/lib/auth-client.ts` — better-auth client library exports (signIn, signUp, signOut, useSession hook) for frontend use
-- `app/lib/app-store.tsx` — Defines Item type and Store context; fetches resumes/jobs from API on mount; CRUD operations backed by API endpoints (now userId-scoped)
-- `app/lib/workflow.ts` — LangGraph multi-agent workflow; exports runWorkflow() which orchestrates ResearchCompany, CrossRef, ResumeFeedback (parallel from START) -> GenerateLetter, GenerateMsg (depend on Company + CrossRef); each node writes to DB and updates process status; uses OpenRouter API via Llama 3.1 models and Tavily search
+- `app/lib/app-store.tsx` — Defines Item type and Store context; data fetch is session-gated via `useSession()` (triggers `refreshResumes()` only when `session.user.id` is set); exposes `clearStore()` to reset all state on sign-out; CRUD operations backed by API endpoints (userId-scoped)
+- `app/lib/system-prompt.ts` — Exports all 5 LLM system prompts as named constants: `company_prompt` (company research), `cross_reference_prompt` (JD vs resume), `generate_letter_prompt` (cover letter), `generate_msg_prompt` (recruiter message), `feedback_prompt` (resume critique); shared between workflow.ts nodes and the chat refinement route
+- `app/hooks/use-chat.ts` — `useChat(selectedJobId, tab)` hook encapsulating all chat state and side effects: loads both letter and message conversation history from the API when the Generate tab opens, manages `mode`, `chats`, `chatDraft`, `isAiTyping`, `typingDots`, `chatContainerRef`, `handleSend`, and `handleClear`; exports `Mode` and `ChatLine` types
+- `app/components/AnalysisReport.tsx` — Renders the analysis panel: tab bar (Company/JDMatch/Feedback/Generate), per-tab content based on process status, and delegates the Generate tab to `ChatPanel`; exports `TABS` and `Tab` type
+- `app/components/ym/ChatPanel.tsx` — Chat UI component: mode switcher (Cover Letter / Message), scrollable message list with typing indicator, textarea input (Enter to send, Shift+Enter for newline), Send and Clear buttons; receives all props from `useChat` hook
+- `app/lib/workflow.ts` — LangGraph multi-agent workflow; exports runWorkflow() which orchestrates ResearchCompany, CrossRef, ResumeFeedback (parallel from START) -> GenerateLetter, GenerateMsg (depend on Company + CrossRef); each node writes to DB and updates process status; imports prompts from system-prompt.ts; uses OpenRouter API via Llama 3.1 models and Tavily search
 - `app/lib/db/schema.ts` — Drizzle ORM table definitions: better-auth tables (user, session, account, verification) + data tables (resumes, resume_jobs, companies, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history, process); all non-auth tables have userId FK and updatedAt $onUpdate
 - `app/lib/db/index.ts` — PostgreSQL client initialization with environment variable validation and Drizzle ORM schema setup
 - `app/resumes/page.tsx` — Resume list, selection, markdown preview; file upload triggers userId-scoped API POST and state refresh; supports .pdf, .txt, .md; "To Job" button navigates to `/resumes/${selectedResumeId}`
-- `app/resumes/[id]/page.tsx` — Job analysis hub for a selected resume: accepts resumeId from URL via useParams(), calls selectResume(resumeId) on mount; tabs for Company, JDMatch, Feedback, and Generate (chat); all operations userId-scoped; contains job list, add/delete, analysis, and chat interface; chat UI shows optimistic user messages, typing indicator with animated dots while AI responds, and auto-scrolls to bottom on new messages
+- `app/resumes/[id]/page.tsx` — Job analysis hub for a selected resume: accepts resumeId from URL via useParams(), calls selectResume(resumeId) on mount; manages job list, add/delete, polling, and view state; delegates analysis display to `AnalysisReport` and chat logic to `useChat` hook
 - `app/api/auth/[...all]/route.ts` — better-auth handler; routes all /api/auth/* requests through better-auth
 - `app/api/resumes/route.ts` — GET all resumes (userId-scoped), POST upload resume with name (userId-scoped); validates session
 - `app/api/resumes/[id]/route.ts` — DELETE resume by id (userId-scoped); validates session
@@ -137,9 +145,9 @@ jobbedin/
 - `app/api/jobs/[id]/route.ts` — DELETE job by id (userId-scoped); validates session
 - `app/api/jobs/[id]/analyze/route.ts` — POST to trigger workflow start (userId-scoped); validates session, checks if already analyzed, clears old results, creates 5 process records with Processing/Pending status, fire-and-forgets runWorkflow() in background, returns 202 immediately
 - `app/api/jobs/[id]/analysis/route.ts` — GET analysis data for a job (userId-scoped); returns company research, jdMatch, feedback, letterConversation, messageConversation, and array of 5 process statuses; used for polling during workflow execution
-- `app/api/jobs/[id]/chat/route.ts` — GET chat history (userId-scoped); POST accepts `{ mode, userMessage }` to invoke ChatOpenAI LLM, fetches company research, JD match, and resume content in parallel, appends all context to system prompt, builds full message history, generates reply, persists updated conversation, returns `{ reply }`; legacy path `{ mode, conversation }` still supported for clearing (userId-scoped); validates session
+- `app/api/jobs/[id]/chat/route.ts` — GET chat history (userId-scoped); POST accepts `{ mode, userMessage }` to invoke ChatOpenAI LLM using `generate_letter_prompt` or `generate_msg_prompt` from system-prompt.ts, fetches company research, JD match, and resume content in parallel, builds full message history, generates reply, persists updated conversation, returns `{ reply }`; legacy path `{ mode, conversation }` still supported for clearing (userId-scoped); validates session
 - `app/globals.css` — Complete Yahoo Messenger design system (300+ lines of CSS variables, primitives, and component styles)
-- `app/components/ym/*.tsx` — Modular UI primitives for consistent theming
+- `app/components/ym/*.tsx` — Modular UI primitives; includes `ChatPanel.tsx` for the chat refinement interface
 - `drizzle.config.ts` — Drizzle Kit configuration for schema migrations and introspection
 - `.env.example` — PostgreSQL connection credentials + better-auth configuration (BETTER_AUTH_SECRET, ORIGIN, ORIGIN_DEV)
 
@@ -198,8 +206,9 @@ jobbedin/
 
 **Code organization:**
 - Pages live in app router directories, not colocated with components
-- Component library isolated under `app/components/ym/`
+- Yahoo Messenger UI primitives isolated under `app/components/ym/`; page-level composite components (e.g., `AnalysisReport.tsx`) live directly under `app/components/`
 - Utilities, state, and database logic in `app/lib/`; hooks in `app/hooks/`
+- All LLM system prompts live in `app/lib/system-prompt.ts` and are imported wherever needed; do not define prompts inline in routes or workflow nodes
 - Database schema (`app/lib/db/schema.ts`) defines all tables, enums, and relationships
 - Database client (`app/lib/db/index.ts`) initializes Drizzle ORM with environment validation
 - State type definitions at top of store context file
@@ -227,7 +236,7 @@ jobbedin/
 All data API routes (resumes, jobs, analysis, chat) explicitly validate session via `auth.api.getSession({ headers: request.headers })` and scope all queries to the authenticated user's userId. If session is missing, routes return 401 Unauthorized. Session tokens are managed by better-auth and stored in the database. The sign-out endpoint calls `authClient.signOut()` on the frontend, which clears the session cookie. Pages are client-rendered without server-side route protection; API-level validation is the security boundary.
 
 **Backend API integration & userId scoping:**
-All resumes, jobs, and analysis data are persisted to PostgreSQL and scoped to the authenticated user's userId. On mount, `useAppStore()` calls API endpoints to fetch the user's resumes and jobs. CRUD operations (create, delete) trigger API calls which update both the database and the React Context. State survives page refresh. All API routes validate the session before executing queries.
+All resumes, jobs, and analysis data are persisted to PostgreSQL and scoped to the authenticated user's userId. `AppStoreProvider` watches `session.user.id` via `useSession()` and only calls `refreshResumes()` once a session is present; this prevents spurious 401 errors on initial page load. `clearStore()` resets all in-memory state when the user signs out. CRUD operations (create, delete) trigger API calls which update both the database and the React Context. State survives page refresh. All API routes validate the session before executing queries.
 
 **Analysis data is AI-generated via LangGraph workflow:**
 The `/api/jobs/[id]/analyze` endpoint triggers `runWorkflow()` asynchronously, which:
@@ -254,15 +263,18 @@ The entire visual language is intentionally retro (2000s Windows XP). This is no
 - Initial migration from Vite + TanStack Router to Next.js App Router completed (see git history)
 - Middleware-based route protection was recently removed (commit 540145d); now API-only session validation
 - PDF parsing via pdf-parse was added to support resume extraction from PDF files
+- All 5 LLM system prompts extracted from workflow.ts and chat route into `app/lib/system-prompt.ts` (commits a4604ce, 9db07f6); the chat route now uses the same generation prompts as the initial workflow nodes
+- Jobs page refactored: chat logic moved to `useChat` hook, analysis display moved to `AnalysisReport` component, chat UI moved to `ChatPanel` component (commit beea0fa)
+- AppStore data fetch is now session-gated; `clearStore()` added for sign-out cleanup (commit 3df0c81)
 
 **Keyboard interaction:**
-The Yahoo Messenger design expects keyboard-friendly navigation. No buttons are disabled by default except when form validation fails. Tab order is implicit (DOM order).
+The Yahoo Messenger design expects keyboard-friendly navigation. No buttons are disabled by default except when form validation fails. Tab order is implicit (DOM order). In the chat input, Enter sends the message; Shift+Enter inserts a newline.
 
 **Frontend polling and incremental result display:**
 When the user clicks "Analyze", the frontend POSTs to `/api/jobs/[id]/analyze` and receives 202. It then sets `isAnalyzing=true` and calls `startPolling(jobId)` which spawns a setInterval polling loop (every 1 second) that fetches `/api/jobs/[id]/analysis`. The analysis endpoint returns all process statuses, which the frontend displays to show progress (e.g., "Company: Processing", "JDMatch: Done"). As workflow nodes complete, the endpoint also returns their generated content (company, jdMatch, feedback, letterConversation, messageConversation). The polling loop terminates when all 5 processes reach Done or Failed status. This pattern allows real-time visibility into asynchronous workflow progress.
 
 **Chat interface and LLM-driven refinement:**
-In the "Generate" tab, users switch between "Cover Letter" and "Message" modes and iteratively refine generated content. Each mode has its own conversation history persisted to the database. When user sends a message via the chat input, `handleSend()` adds the user message to the local chat state immediately (optimistic update), sets `isAiTyping=true`, POSTs `{ mode, userMessage }` to `/api/jobs/[id]/chat`. While awaiting response, a typing indicator displays animated cycling dots (`.`, `..`, `...` every 400ms). The chat container auto-scrolls to the bottom on new messages. The API route fetches the existing conversation from database, company research, JD match content, and resume content in parallel, converts all prior messages to LangChain message objects (HumanMessage and AIMessage), appends all available context to the system prompt (company summary, cross-ref insights, resume, job description), appends the new user message, calls ChatOpenAI via OpenRouter, receives the AI reply, and returns `{ reply }`. The frontend receives the reply, appends it to the chat state, and persists the updated conversation (history + user message + ai reply) back to the database for next load. Legacy support: POSTing `{ mode, conversation }` clears and replaces the entire conversation (used by Clear button).
+In the "Generate" tab, users switch between "Cover Letter" and "Message" modes and iteratively refine generated content. All chat logic lives in `app/hooks/use-chat.ts` (`useChat` hook); the UI is rendered by `app/components/ym/ChatPanel.tsx`. Each mode has its own conversation history persisted to the database. When the user sends a message (Enter key or Send button), `handleSend()` adds the user message to local chat state immediately (optimistic update), sets `isAiTyping=true`, and POSTs `{ mode, userMessage }` to `/api/jobs/[id]/chat`. While awaiting response, a typing indicator displays animated cycling dots (`.`, `..`, `...` every 400ms). The chat container auto-scrolls to the bottom on new messages. The API route uses `generate_letter_prompt` or `generate_msg_prompt` from `system-prompt.ts` as the system prompt, fetches the existing conversation from database, company research, JD match content, and resume content in parallel, converts all prior messages to LangChain message objects, builds the full prompt with context, calls ChatOpenAI via OpenRouter, and returns `{ reply }`. The frontend appends the reply and persists the updated conversation. Legacy support: POSTing `{ mode, conversation }` clears and replaces the entire conversation (used by Clear button).
 
 ## Gotchas & Notes
 
