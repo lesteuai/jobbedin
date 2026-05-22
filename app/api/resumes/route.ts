@@ -3,6 +3,8 @@ import { db } from '@/app/lib/db';
 import { resume } from '@/app/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { auth } from '@/app/lib/auth';
+import "pdf-parse/worker";
+import { PDFParse } from "pdf-parse";
 
 export async function GET(request: NextRequest) {
   const session = await auth.api.getSession({ headers: request.headers });
@@ -50,11 +52,11 @@ export async function POST(request: NextRequest) {
 
   if (extension === 'pdf') {
     try {
-      const { PDFParse } = await import('pdf-parse');
       const parser = new PDFParse({ data: buffer });
       const textResult = await parser.getText();
       content = textResult.text;
     } catch (error) {
+      console.log(`Error parsing PDF: ${error}`);
       return NextResponse.json(
         { error: 'Failed to parse PDF' },
         { status: 400 }
