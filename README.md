@@ -28,6 +28,7 @@ We built it with a standard tech stack:
 - Working together: Due to our difference in experience, I (Brian) became the project manager. I helped my teammate understand how to use git, how to draw wireframe, understand task and priority. I also taught him to not always rely on AI and to understand deeply what to do, because they can and have been wrong. He taught me how to be more of a leader and manager instead of just another coder. We both came up with ideas, I helped him realize the implimentation of those ideas.
 - Vercel was a pain to set up in deployment of anything that is not the production environment. To deploy to the development environment, I had to run `vercel` on my computer instead of using the web UI, because it didn't have the option to deploy from anywhere except `main` branch.
 - OpenRouter free rate limit. That's what happened when you used free models for an agentic task. It tool-called a lot.
+- PDF Parsing using pdf-parse didn't work as expected, because Vercel is using a runtime that is different from Node.js default.
 
 ## Accomplishments that we're proud of
 This whole project. What we have done to achieve this.
