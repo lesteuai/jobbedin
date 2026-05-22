@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { resume } from '@/app/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
-import { PDFParse } from 'pdf-parse';
 import { auth } from '@/app/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -51,6 +50,7 @@ export async function POST(request: NextRequest) {
 
   if (extension === 'pdf') {
     try {
+      const { PDFParse } = await import('pdf-parse');
       const parser = new PDFParse({ data: buffer });
       const textResult = await parser.getText();
       content = textResult.text;
