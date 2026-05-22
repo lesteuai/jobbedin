@@ -18,8 +18,9 @@ export function AppFrame({ children }: { children: ReactNode }) {
   return (
     <div
       style={{
-        minHeight: "100vh",
+        height: "100vh",
         display: "flex",
+        overflow: "hidden",
       }}
     >
       <div
@@ -28,9 +29,10 @@ export function AppFrame({ children }: { children: ReactNode }) {
           width: "100%",
           display: "flex",
           flexDirection: "column",
-          minHeight: "100vh",
+          height: "100%",
           borderRadius: 0,
           position: "relative",
+          overflow: "hidden",
         }}
       >
         <div className="ym-titlebar">

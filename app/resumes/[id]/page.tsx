@@ -130,7 +130,7 @@ export default function ResumesJobsPage() {
         }
       />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
         {view === 'report' && selected ? (
           <AnalysisReport
             selectedName={selected.name}
@@ -142,7 +142,7 @@ export default function ResumesJobsPage() {
             chat={chat}
           />
         ) : (
-          <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0, overflow: 'hidden' }}>
             {view === 'add' ? (
               <>
                 <div style={{ fontWeight: 'bold', fontSize: 13 }}>✎ Paste job description</div>

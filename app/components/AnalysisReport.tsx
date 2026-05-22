@@ -58,7 +58,7 @@ export function AnalysisReport({ selectedName, tab, setTab, analysisData, getPro
         ))}
       </div>
 
-      <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0, overflow: 'hidden' }}>
         {renderTabContent()}
       </div>
     </>

@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 
 export function MarkdownPanel({ children }: { children: string }) {
   return (
-    <div className="ym-inset ym-md" style={{ flex: 1, padding: 14, overflow: "auto" }}>
+    <div className="ym-inset ym-md" style={{ flex: 1, padding: 14, overflow: "auto", minHeight: 0 }}>
       <ReactMarkdown
         components={{
           // 1. This makes the main Company Name (H1) purple

@@ -40,6 +40,7 @@ export function Sidebar({
         flexDirection: "column",
         padding: 8,
         gap: 8,
+        overflow: "hidden",
       }}
     >
       {header}

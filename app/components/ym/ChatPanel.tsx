@@ -89,7 +89,7 @@ export function ChatPanel({
       <div
         ref={chatContainerRef}
         className="ym-inset"
-        style={{ flex: 1, padding: 10, overflow: 'auto', fontFamily: 'var(--ym-font)', fontSize: 12 }}
+        style={{ flex: 1, padding: 10, overflow: 'auto', fontFamily: 'var(--ym-font)', fontSize: 12, minHeight: 0 }}
       >
         {renderMessages()}
       </div>

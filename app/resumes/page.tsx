@@ -79,7 +79,7 @@ export default function ResumesPage() {
         onDelete={(id) => setPendingDelete(id)}
       />
 
-      <div style={{ flex: 1, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ flex: 1, padding: 12, display: "flex", flexDirection: "column", gap: 10, minHeight: 0, overflow: "hidden" }}>
         {!selected ? (
           <>
             <div style={{ fontWeight: "bold", fontSize: 13, visibility: "hidden" }}>
