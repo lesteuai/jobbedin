@@ -5,28 +5,12 @@ import { eq, and } from 'drizzle-orm';
 import { auth } from '@/app/lib/auth';
 import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
+import { generate_letter_prompt, generate_msg_prompt } from '@/app/lib/system-prompt';
 
 type ChatLine = {
   role: 'user' | 'ai';
   text: string;
 };
-
-const generate_letter_prompt = `Act as an expert Career Coach. Write a highly tailored, professional cover letter for the candidate.
-You have been provided with:
-1. The candidate's Resume.
-2. The exact Job Description.
-3. A summary of the Company's culture and goals.
-4. Insights mapping the candidate's skills to the role.
-INSTRUCTIONS:
-- Use the 'Company Summary' to align the tone with their corporate culture.
-- Use the 'Cross Reference Insights' to highlight the candidate's most relevant project.
-- Keep it under 300 words. No robotic jargon (e.g., 'delve', 'testament').`;
-
-const generate_msg_prompt = `Act as a Career Coach. Write a brief networking message to a recruiter.
-INSTRUCTIONS:
-- Highlight a match from the 'Cross Reference Insights'.
-- Reference a cultural trait or goal from the 'Company Summary' to show insider knowledge.
-- STRICT LIMIT: Must be between 75 and 95 words. Do not exceed 100 words.`;
 
 const writingLlm = new ChatOpenAI({
   modelName: process.env.WRITING_MODEL ?? 'meta-llama/llama-3.1-8b-instruct',
