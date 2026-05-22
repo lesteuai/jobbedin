@@ -41,6 +41,7 @@ export default function JobsPage() {
   const [chats, setChats] = useState<Record<Mode, ChatLine[]>>({ letter: [], message: [] });
   const [chatDraft, setChatDraft] = useState('');
   const [chatsLoaded, setChatsLoaded] = useState(false);
+  const [isSendingChat, setIsSendingChat] = useState(false);
 
   const selected = jobs.find((j) => j.id === selectedJobId);
   const pendingName = jobs.find((j) => j.id === pendingDelete)?.name;
@@ -118,35 +119,44 @@ export default function JobsPage() {
   useEffect(() => () => stopPolling(), []);
 
   const lines = chats[mode];
-  const canSend = chatDraft.trim().length > 0;
+  const canSend = chatDraft.trim().length > 0 && !isSendingChat;
   const canClear = lines.length > 0;
 
   const handleSend = async () => {
     if (!canSend || !selectedJobId) return;
 
-    const updatedLines = [
-      ...lines,
-      { role: 'user' as const, text: chatDraft.trim() },
-      {
-        role: 'ai' as const,
-        text:
-          mode === 'letter'
-            ? '(Mock AI) Sure — here\'s a revised cover letter draft based on your notes...\n\nDear Hiring Manager,\n...'
-            : '(Mock AI) Got it — here\'s a punchier outreach message...\n\nHi [Name],\n...',
-      },
-    ];
-
-    setChats((p) => ({ ...p, [mode]: updatedLines }));
+    const userMessage = chatDraft.trim();
     setChatDraft('');
+    setIsSendingChat(true);
 
     try {
-      await fetch(`/api/jobs/${selectedJobId}/chat`, {
+      const res = await fetch(`/api/jobs/${selectedJobId}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode, conversation: updatedLines }),
+        body: JSON.stringify({ mode, userMessage }),
       });
+
+      if (!res.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      const data = await res.json();
+      const aiReply = data.reply;
+
+      setChats((p) => ({
+        ...p,
+        [mode]: [
+          ...p[mode],
+          { role: 'user', text: userMessage },
+          { role: 'ai', text: aiReply },
+        ],
+      }));
     } catch (err) {
-      console.error('Error saving chat:', err);
+      const msg = err instanceof Error ? err.message : 'Error sending message';
+      showError(msg);
+      setChatDraft(userMessage);
+    } finally {
+      setIsSendingChat(false);
     }
   };
 
