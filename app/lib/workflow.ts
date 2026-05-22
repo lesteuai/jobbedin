@@ -49,6 +49,7 @@ You MUST format your response strictly in the following Markdown structure. Do n
 * [Specific bullet about their current strategic threats, market competitors, or why they need to win market share right now.]
 * [Specific bullet about a recent product launch, tech stack expansion, or specific revenue push.]
 * [Specific bullet about the immediate, realistic business problem this specific role solves.]
+* [Specific bullet about their recent plan, news that related to hiring new roles in company.]
 
 ### Culture Signals
 * [Specific bullet detailing their actual operational mechanics (e.g., 'Flat hierarchy with 40+ direct reports', 'Heavy emphasis on written PR/FAQ docs over meetings').]
