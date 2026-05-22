@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AppFrame } from '@/app/components/ym/AppFrame';
 import { Sidebar } from '@/app/components/ym/Sidebar';
 import { YmModal } from '@/app/components/ym/YmModal';
@@ -33,6 +33,8 @@ export default function JobsPage() {
     feedback: string | null;
   } | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [processStatuses, setProcessStatuses] = useState<Array<{ processType: string; status: string }>>([]);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [tab, setTab] = useState<Tab>('Company');
   const [mode, setMode] = useState<Mode>('letter');
@@ -43,14 +45,41 @@ export default function JobsPage() {
   const selected = jobs.find((j) => j.id === selectedJobId);
   const pendingName = jobs.find((j) => j.id === pendingDelete)?.name;
 
+  const getProcessStatus = (type: string) =>
+    processStatuses.find(p => p.processType === type)?.status ?? null;
+
   const handleSelect = (id: string) => {
     setView('view');
     setDraft('');
     selectJob(id);
   };
 
+  const stopPolling = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  };
+
+  const startPolling = (jobId: string) => {
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/jobs/${jobId}/analysis`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setAnalysisData({ company: data.company, jdMatch: data.jdMatch, feedback: data.feedback });
+        setProcessStatuses(data.processes ?? []);
+        if (data.letterConversation) setChats(p => ({ ...p, letter: data.letterConversation }));
+        if (data.messageConversation) setChats(p => ({ ...p, message: data.messageConversation }));
+        const procs: Array<{ status: string }> = data.processes ?? [];
+        const allDone = procs.length === 5 && procs.every(p => p.status === 'done' || p.status === 'failed');
+        if (allDone) { stopPolling(); setIsAnalyzing(false); }
+      } catch { /* ignore transient errors */ }
+    }, 1000);
+  };
+
   useEffect(() => {
+    stopPolling();
     setAnalysisData(null);
+    setProcessStatuses([]);
   }, [selectedJobId]);
 
   useEffect(() => {
@@ -85,6 +114,8 @@ export default function JobsPage() {
 
     loadChats();
   }, [selectedJobId, tab]);
+
+  useEffect(() => () => stopPolling(), []);
 
   const lines = chats[mode];
   const canSend = chatDraft.trim().length > 0;
@@ -138,28 +169,30 @@ export default function JobsPage() {
 
   const handleAnalyze = async () => {
     if (!selectedJobId) return;
-
     setIsAnalyzing(true);
     try {
-      await fetch(`/api/jobs/${selectedJobId}/analyze`, { method: 'POST' });
-
-      const res = await fetch(`/api/jobs/${selectedJobId}/analysis`);
-      if (!res.ok) throw new Error('Failed to fetch analysis');
-
+      const res = await fetch(`/api/jobs/${selectedJobId}/analyze`, { method: 'POST' });
+      if (!res.ok) throw new Error('Analyze request failed');
       const data = await res.json();
-      setAnalysisData({
-        company: data.company,
-        jdMatch: data.jdMatch,
-        feedback: data.feedback,
-      });
-
-      setView('report');
-      setTab('Company');
+      if (data.status === 'done') {
+        const analysisRes = await fetch(`/api/jobs/${selectedJobId}/analysis`);
+        if (!analysisRes.ok) throw new Error('Failed to fetch analysis');
+        const analysis = await analysisRes.json();
+        setAnalysisData({ company: analysis.company, jdMatch: analysis.jdMatch, feedback: analysis.feedback });
+        setProcessStatuses(analysis.processes ?? []);
+        if (analysis.letterConversation) setChats(p => ({ ...p, letter: analysis.letterConversation }));
+        if (analysis.messageConversation) setChats(p => ({ ...p, message: analysis.messageConversation }));
+        setIsAnalyzing(false);
+        setView('report');
+        setTab('Company');
+      } else {
+        setView('report');
+        setTab('Company');
+        startPolling(selectedJobId);
+      }
     } catch (err) {
-      console.error('Error analyzing job:', err);
-      const msg = err instanceof Error ? err.message : 'Failed to analyze job. Please try again.';
+      const msg = err instanceof Error ? err.message : 'Failed to analyze job.';
       showError(msg);
-    } finally {
       setIsAnalyzing(false);
     }
   };
@@ -215,17 +248,19 @@ export default function JobsPage() {
             </div>
 
             <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {tab !== 'Generate' ? (
-                analysisData?.[tab === 'Company' ? 'company' : tab === 'JDMatch' ? 'jdMatch' : 'feedback'] ? (
-                  <MarkdownPanel>
-                    {analysisData[tab === 'Company' ? 'company' : tab === 'JDMatch' ? 'jdMatch' : 'feedback'] || ''}
-                  </MarkdownPanel>
-                ) : isAnalyzing ? (
-                  <div style={{ color: '#666', fontStyle: 'italic' }}>Analyzing...</div>
-                ) : (
-                  <div style={{ color: '#666', fontStyle: 'italic' }}>Click Analyze to generate analysis.</div>
-                )
-              ) : (
+              {tab !== 'Generate' ? (() => {
+                const tabConfig: Record<string, { processType: string; content: string | null | undefined }> = {
+                  Company: { processType: 'company', content: analysisData?.company },
+                  JDMatch: { processType: 'jdmatch', content: analysisData?.jdMatch },
+                  Feedback: { processType: 'feedback', content: analysisData?.feedback },
+                };
+                const cfg = tabConfig[tab] ?? { processType: '', content: null };
+                const status = getProcessStatus(cfg.processType);
+                if (status === 'done' && cfg.content) return <MarkdownPanel>{cfg.content}</MarkdownPanel>;
+                if (status === 'processing' || status === 'pending') return <div style={{ color: '#666', fontStyle: 'italic' }}>Processing...</div>;
+                if (status === 'failed') return <div style={{ color: '#c00', fontStyle: 'italic' }}>Analysis failed for this section.</div>;
+                return <div style={{ color: '#666', fontStyle: 'italic' }}>Click Analyze to generate analysis.</div>;
+              })() : (
                 <>
                   <div
                     style={{
@@ -263,20 +298,28 @@ export default function JobsPage() {
                       fontSize: 12,
                     }}
                   >
-                    {lines.length === 0 ? (
-                      <div style={{ color: '#888', fontStyle: 'italic' }}>
-                        (No messages yet. Start typing below.)
-                      </div>
-                    ) : (
-                      lines.map((l, i) => (
-                        <div key={i} className="ym-chat-line">
-                          <span className={l.role === 'user' ? 'ym-bubble-user' : 'ym-bubble-ai'}>
-                            {l.role === 'user' ? 'You: ' : 'JobbedIn-AI: '}
-                          </span>
-                          {l.text}
-                        </div>
-                      ))
-                    )}
+                    {(() => {
+                      const modeProcessType = mode === 'letter' ? 'letter' : 'message';
+                      const modeStatus = getProcessStatus(modeProcessType);
+                      if (modeStatus === 'pending' || modeStatus === 'processing') {
+                        return <div style={{ color: '#888', fontStyle: 'italic' }}>{`Generating your ${mode === 'letter' ? 'cover letter' : 'message'}...`}</div>;
+                      }
+                      if (modeStatus === 'failed') {
+                        return <div style={{ color: '#c00', fontStyle: 'italic' }}>Generation failed. Please re-analyze.</div>;
+                      }
+                      return lines.length === 0 ? (
+                        <div style={{ color: '#888', fontStyle: 'italic' }}>(No messages yet. Start typing below.)</div>
+                      ) : (
+                        lines.map((l, i) => (
+                          <div key={i} className="ym-chat-line">
+                            <span className={l.role === 'user' ? 'ym-bubble-user' : 'ym-bubble-ai'}>
+                              {l.role === 'user' ? 'You: ' : 'JobbedIn-AI: '}
+                            </span>
+                            {l.text}
+                          </div>
+                        ))
+                      );
+                    })()}
                   </div>
 
                   <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
