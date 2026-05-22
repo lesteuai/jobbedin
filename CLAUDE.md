@@ -17,9 +17,15 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 2. User navigates to /resumes or /jobs pages; API calls validate session and return 401 if not authenticated
 3. User uploads resumes (PDF, TXT, MD) on /resumes page (scoped to their userId); PDF content is extracted via pdf-parse
 4. User navigates to /jobs to add job descriptions (pasted as text; scoped to their userId)
-5. System displays job analysis tabs: Company research, JD match scoring, resume feedback, and AI chat for iterative generation of cover letters and messages
-6. UI renders mock analysis data and provides chat interface for refining outputs
-7. Backend persists all data to PostgreSQL with userId association; async job processing is planned
+5. User clicks "Analyze" to trigger the job analysis workflow
+6. Frontend POST to `/api/jobs/[id]/analyze` returns 202 immediately and workflow starts asynchronously
+7. LangGraph workflow (app/lib/workflow.ts) executes five nodes in parallel and sequential stages:
+   - Stage 1 (parallel): ResearchCompany (Tavily search + agent), CrossRef (JD vs resume match), ResumeFeedback (critical review)
+   - Stage 2 (depends on Company + CrossRef): GenerateLetter and GenerateMsg nodes run in parallel
+   - Each node writes results to PostgreSQL and updates its process status
+8. Frontend polls `/api/jobs/[id]/analysis` every 1 second to display results incrementally
+9. When all 5 process statuses are Done, UI loads complete analysis and generated cover letter/message from database
+10. UI provides chat interface for iterative refinement of cover letter and message outputs
 
 **Key architectural layers:**
 - **Frontend**: Client-side React components with `use client` directives (all user-facing pages and interactive components)
@@ -29,7 +35,7 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 - **Backend database**: PostgreSQL with Drizzle ORM for type-safe schema and migrations
 - **API layer**: Next.js App Router API routes for resume/job CRUD, analysis data insertion, and chat persistence; all routes validate session via `auth.api.getSession()` and scope data to userId
 - **File handling**: PDF extraction via pdf-parse; TXT and Markdown files read as plain text
-- **AI processing**: Planned LangGraph agents and OpenAI API integration
+- **AI processing**: LangGraph multi-agent workflow (app/lib/workflow.ts) with 5 nodes orchestrating company research, resume critique, JD matching, cover letter generation, and message generation via OpenRouter API (Llama 3.1 models)
 
 ## Key Entry Points
 
@@ -77,9 +83,10 @@ jobbedin/
 │   │   ├── auth.ts               # better-auth server configuration with Drizzle ORM adapter
 │   │   ├── auth-client.ts        # better-auth client exports for frontend consumption
 │   │   ├── utils.ts              # Utility: cn() for class merging (clsx + tailwind-merge)
+│   │   ├── workflow.ts           # LangGraph multi-agent workflow: 5 nodes orchestrating analysis, research, generation
 │   │   └── db/
 │   │       ├── index.ts          # Drizzle ORM initialization and PostgreSQL client
-│   │       └── schema.ts          # Database schema (user, session, account, verification + data tables)
+│   │       └── schema.ts          # Database schema (user, session, account, verification + data tables + process tracking)
 │   ├── hooks/
 │   │   └── use-mobile.tsx        # Mobile breakpoint detection hook
 │   ├── layout.tsx                # Root layout with AppStoreProvider
@@ -114,6 +121,7 @@ jobbedin/
 - `app/lib/auth.ts` — better-auth server initialization with Drizzle ORM adapter; uses BETTER_AUTH_SECRET and ORIGIN env vars
 - `app/lib/auth-client.ts` — better-auth client library exports (signIn, signUp, signOut, useSession hook) for frontend use
 - `app/lib/app-store.tsx` — Defines Item type and Store context; fetches resumes/jobs from API on mount; CRUD operations backed by API endpoints (now userId-scoped)
+- `app/lib/workflow.ts` — LangGraph multi-agent workflow; exports runWorkflow() which orchestrates ResearchCompany, CrossRef, ResumeFeedback (parallel from START) -> GenerateLetter, GenerateMsg (depend on Company + CrossRef); each node writes to DB and updates process status; uses OpenRouter API via Llama 3.1 models and Tavily search
 - `app/lib/db/schema.ts` — Drizzle ORM table definitions: better-auth tables (user, session, account, verification) + data tables (resumes, resume_jobs, companies, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history, process); all non-auth tables have userId FK and updatedAt $onUpdate
 - `app/lib/db/index.ts` — PostgreSQL client initialization with environment variable validation and Drizzle ORM schema setup
 - `app/resumes/page.tsx` — Resume list, selection, markdown preview; file upload triggers userId-scoped API POST and state refresh; supports .pdf, .txt, .md
@@ -123,8 +131,8 @@ jobbedin/
 - `app/api/resumes/[id]/route.ts` — DELETE resume by id (userId-scoped); validates session
 - `app/api/jobs/route.ts` — GET jobs filtered by resumeId (userId-scoped), POST create job with description (userId-scoped); validates session
 - `app/api/jobs/[id]/route.ts` — DELETE job by id (userId-scoped); validates session
-- `app/api/jobs/[id]/analyze/route.ts` — POST to insert static analysis data (userId-scoped); validates session
-- `app/api/jobs/[id]/analysis/route.ts` — GET analysis data for a job (userId-scoped); validates session
+- `app/api/jobs/[id]/analyze/route.ts` — POST to trigger workflow start (userId-scoped); validates session, checks if already analyzed, clears old results, creates 5 process records with Processing/Pending status, fire-and-forgets runWorkflow() in background, returns 202 immediately
+- `app/api/jobs/[id]/analysis/route.ts` — GET analysis data for a job (userId-scoped); returns company research, jdMatch, feedback, letterConversation, messageConversation, and array of 5 process statuses; used for polling during workflow execution
 - `app/api/jobs/[id]/chat/route.ts` — GET chat history, POST new chat message (userId-scoped); validates session
 - `app/globals.css` — Complete Yahoo Messenger design system (300+ lines of CSS variables, primitives, and component styles)
 - `app/components/ym/*.tsx` — Modular UI primitives for consistent theming
@@ -163,14 +171,17 @@ jobbedin/
 - tsx 4.22.1 (TypeScript execution for scripts)
 - pdf-parse 2.4.5 (PDF text extraction)
 
+**AI & LLM libraries:**
+- @langchain/langgraph (multi-agent workflow orchestration; StateGraph, START, END, Annotation)
+- @langchain/core (ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, StringOutputParser, tool decorator, z schema validation)
+- @langchain/openai (ChatOpenAI client for LLM interaction)
+- @langchain/tavily (TavilySearch tool for web research)
+- openrouter API (via OPENROUTER_API_KEY env var; uses Llama 3.1 8B instruct models)
+
 **Developer tools:**
 - TypeScript 5
 - ESLint 9 with Next.js config
 - pnpm (workspace enabled)
-
-**Backend (future integration):**
-- LangGraph (agent orchestration for AI workflows)
-- OpenAI-compatible APIs (company research, JD analysis, critique, generation)
 
 ## Conventions
 
@@ -214,8 +225,17 @@ All data API routes (resumes, jobs, analysis, chat) explicitly validate session 
 **Backend API integration & userId scoping:**
 All resumes, jobs, and analysis data are persisted to PostgreSQL and scoped to the authenticated user's userId. On mount, `useAppStore()` calls API endpoints to fetch the user's resumes and jobs. CRUD operations (create, delete) trigger API calls which update both the database and the React Context. State survives page refresh. All API routes validate the session before executing queries.
 
-**Analysis data is static (backend-provided):**
-The `/api/jobs/[id]/analyze` endpoint inserts hardcoded analysis data (company research, JD match scoring, resume feedback) into the database. These are not yet generated by AI agents; they are placeholder data for testing the analysis data flow. Chat responses are generated by the UI; actual AI generation is planned via LangGraph agents.
+**Analysis data is AI-generated via LangGraph workflow:**
+The `/api/jobs/[id]/analyze` endpoint triggers `runWorkflow()` asynchronously, which:
+1. Deletes prior analysis results for the job
+2. Creates 5 process records (Company, JDMatch, ResumeFeedback, Letter, Message) with status tracking
+3. Spawns the LangGraph StateGraph concurrently:
+   - ResearchCompany: Tavily search agent that researches company mission, culture, hiring news; writes to `company` table
+   - CrossRef: LLM-based analysis comparing resume vs JD; writes to `jobDescriptionMatch` table
+   - ResumeFeedback: LLM-based critical review of resume; writes to `resumeFeedback` table
+   - GenerateLetter: LLM-based cover letter writer (depends on Company + CrossRef); writes to `coverLetterHistory` table (conversation: [{ role: 'ai', text: result }])
+   - GenerateMsg: LLM-based recruiter message writer (depends on Company + CrossRef); writes to `messageGenHistory` table (conversation: [{ role: 'ai', text: result }])
+Each node updates its process status to Done or Failed upon completion. The workflow is fire-and-forget; the API returns 202 immediately. Frontend polls `/api/jobs/[id]/analysis` to check process statuses and display results as they complete.
 
 **Database in production:**
 PostgreSQL schema includes better-auth tables (user, session, account, verification) plus JobbedIn data tables (resumes, resume_jobs, companies, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history, process). Migrations are tracked in `drizzle/`. Environment variables must be set: PG_USER, PG_PASSWORD, PG_HOST, PG_PORT, PG_DATABASE (PostgreSQL), and BETTER_AUTH_SECRET, ORIGIN, ORIGIN_DEV (better-auth).
@@ -233,6 +253,9 @@ The entire visual language is intentionally retro (2000s Windows XP). This is no
 
 **Keyboard interaction:**
 The Yahoo Messenger design expects keyboard-friendly navigation. No buttons are disabled by default except when form validation fails. Tab order is implicit (DOM order).
+
+**Frontend polling and incremental result display:**
+When the user clicks "Analyze", the frontend POSTs to `/api/jobs/[id]/analyze` and receives 202. It then sets `isAnalyzing=true` and calls `startPolling(jobId)` which spawns a setInterval polling loop (every 1 second) that fetches `/api/jobs/[id]/analysis`. The analysis endpoint returns all process statuses, which the frontend displays to show progress (e.g., "Company: Processing", "JDMatch: Done"). As workflow nodes complete, the endpoint also returns their generated content (company, jdMatch, feedback, letterConversation, messageConversation). The polling loop terminates when all 5 processes reach Done or Failed status. This pattern allows real-time visibility into asynchronous workflow progress.
 
 ## Gotchas & Notes
 
@@ -254,6 +277,18 @@ Session cookies are set by better-auth automatically. Logout via `authClient.sig
 **No environment variable validation on app startup:**
 Database initialization happens at import time. Missing PG_* or BETTER_AUTH_SECRET env vars will crash the server. The app does not validate all required env vars at startup; only when db/auth modules are imported.
 
+**LangGraph workflow environment variables:**
+The workflow requires OPENROUTER_API_KEY and optionally REASONING_MODEL and WRITING_MODEL env vars. If OPENROUTER_API_KEY is missing, runWorkflow() will fail. Default models are 'meta-llama/llama-3.1-8b-instruct:free' on OpenRouter. Missing env vars will cause the async workflow to fail silently (the process status will be set to Failed but the API call already returned 202).
+
+**Tavily search tool requires credentials:**
+The TavilySearch tool in workflow.ts requires a TAVILY_API_KEY env var (implicit in @langchain/tavily). If missing, company research node will fail. No fallback is implemented.
+
+**Fire-and-forget workflow execution:**
+The `/api/jobs/[id]/analyze` endpoint calls `void runWorkflow()` without awaiting or error handling beyond what's inside runWorkflow(). If the workflow crashes, the frontend will see process status "Failed" on next poll, but the error is only logged to server console, not returned to the client.
+
+**Process status tracking is per-node:**
+Each workflow node independently updates its own process record in the database. If multiple nodes fail, their statuses will be Failed independently. The frontend polls and displays all 5 statuses, but there is no aggregated error summary or retry mechanism at the node level.
+
 ## Development Workflow
 
 **Setup:**
@@ -266,6 +301,9 @@ Copy `.env.example` to `.env.local` and fill in all values:
 - PostgreSQL credentials: PG_USER, PG_PASSWORD, PG_HOST, PG_PORT, PG_DATABASE
 - better-auth secret: BETTER_AUTH_SECRET (generate a random string for development; use a secure secret in production)
 - Origin URLs: ORIGIN (production domain), ORIGIN_DEV (http://localhost:3000 for development)
+- OpenRouter API: OPENROUTER_API_KEY (required for LangGraph workflow; get from https://openrouter.ai)
+- Tavily search: TAVILY_API_KEY (required for company research node; get from https://tavily.com)
+- LLM model override (optional): REASONING_MODEL, WRITING_MODEL (default: 'meta-llama/llama-3.1-8b-instruct:free' on OpenRouter)
 
 **Development server:**
 ```bash
@@ -324,4 +362,5 @@ npx tsc --noEmit
 - [State Management & Store](claude-docs/state-management.md) — AppStore context, item management, and cross-page state sync
 - [Pages & Routing](claude-docs/pages-routing.md) — Route structure, data flow between pages, view states
 - [Styling & Theming](claude-docs/styling-theming.md) — Color system, CSS organization, design token usage
-- [Database & Backend (todo)](claude-docs/database-backend.md) — Drizzle ORM schema, PostgreSQL tables, async job processing, API routes
+- [Database & Backend](claude-docs/database-backend.md) — Drizzle ORM schema, PostgreSQL tables, API routes, session validation
+- [LangGraph Workflow & AI Agents](claude-docs/workflow-agents.md) — Multi-agent orchestration, node definitions, LLM prompts, Tavily research, process tracking
