@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1779173651815,
-      "tag": "0000_dusty_toro",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1779251912180,
-      "tag": "0001_ordinary_ben_parker",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1779251981677,
-      "tag": "0002_charming_blade",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1779253567577,
-      "tag": "0003_amusing_stick",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1779254931118,
-      "tag": "0004_colorful_klaw",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1779259055279,
-      "tag": "0005_shallow_shaman",
+      "when": 1779584060551,
+      "tag": "0000_violet_fabian_cortez",
       "breakpoints": true
     }
   ]

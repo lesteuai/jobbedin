@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, pgEnum, json, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, json, timestamp, boolean, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm/relations";
 
 export enum ProcessStatus {
@@ -8,13 +8,6 @@ export enum ProcessStatus {
 	Failed = 'failed',
 }
 
-export const processStatusEnum = pgEnum('process_status', [
-  ProcessStatus.Pending,
-  ProcessStatus.Processing,
-  ProcessStatus.Done,
-  ProcessStatus.Failed,
-] as const);
-
 export enum ProcessType {
 	Company = 'company',
 	JDMatch = 'jdmatch',
@@ -22,14 +15,6 @@ export enum ProcessType {
 	Letter = 'letter',
 	Message = 'message',
 }
-
-export const processTypeEnum = pgEnum('process_type', [
-  ProcessType.Company,
-  ProcessType.JDMatch,
-  ProcessType.ResumeFeedback,
-  ProcessType.Letter,
-  ProcessType.Message,
-] as const);
 
 // Better-auth tables
 export const user = pgTable('user', {
@@ -209,8 +194,8 @@ export const process = pgTable('processes', {
   jobId: uuid('job_id')
     .notNull()
     .references(() => resumeJob.id, {onDelete: 'cascade'}),
-  processType: processTypeEnum('process_type').notNull(),
-  status: processStatusEnum('status').notNull().default(ProcessStatus.Pending),
+  processType: text('process_type').notNull(),
+  status: text('status').notNull().default(ProcessStatus.Pending),
 	createdAt: timestamp('created_at').defaultNow(),
 	updatedAt: timestamp('updated_at')
     .$onUpdate(() => new Date())
