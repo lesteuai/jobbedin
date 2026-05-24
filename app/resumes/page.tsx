@@ -67,7 +67,7 @@ export default function ResumesPage() {
     }
   };
 
-  return (
+  return ( session ?
     <AppFrame>
       <input
         ref={fileInputRef}
@@ -142,5 +142,5 @@ export default function ResumesPage() {
         Are you sure you want to delete <b>{pendingName}</b>?
       </YmModal>
     </AppFrame>
-  );
+  : null);
 }

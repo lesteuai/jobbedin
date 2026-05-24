@@ -117,7 +117,7 @@ export default function ResumesJobsPage() {
     }
   };
 
-  return (
+  return ( session ?
     <AppFrame>
       <Sidebar
         title="Jobs"
@@ -226,5 +226,5 @@ export default function ResumesJobsPage() {
         Are you sure you want to delete <b>{pendingName}</b>?
       </YmModal>
     </AppFrame>
-  );
+  : null);
 }
