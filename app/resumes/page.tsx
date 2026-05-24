@@ -1,16 +1,23 @@
 'use client';
 
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AppFrame } from "@/app/components/ym/AppFrame";
 import { Sidebar } from "@/app/components/ym/Sidebar";
 import { YmModal } from "@/app/components/ym/YmModal";
 import { YmButton } from "@/app/components/ym/YmButton";
 import { MarkdownPanel } from "@/app/components/ym/MarkdownPanel";
 import { useAppStore } from "@/app/lib/app-store";
+import { useSession } from "@/app/lib/auth-client";
 
 export default function ResumesPage() {
   const router = useRouter();
+  const { data: session, isPending } = useSession();
+
+  useEffect(() => {
+    if (!isPending && !session?.user) router.replace('/');
+  }, [isPending, session?.user, router]);
+
   const {
     resumes,
     selectedResumeId,

@@ -67,7 +67,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [session?.user?.id]);
 
   useEffect(() => {
-    if (!selectedResumeId) {
+    if (!selectedResumeId || !session?.user?.id) {
       setJobs([]);
       return;
     }
@@ -87,7 +87,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
     };
     fetchJobs();
-  }, [selectedResumeId]);
+  }, [selectedResumeId, session?.user?.id]);
 
   const clearStore = () => {
     setResumes([]);

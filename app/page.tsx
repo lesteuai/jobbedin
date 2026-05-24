@@ -1,8 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
-import { authClient } from '@/app/lib/auth-client';
+import { useState, useEffect, type FormEvent } from 'react';
+import { authClient, useSession } from '@/app/lib/auth-client';
 import { YmButton } from '@/app/components/ym/YmButton';
 import { useAppStore } from '@/app/lib/app-store';
 
@@ -10,12 +10,19 @@ type Mode = 'signin' | 'signup'; // | 'forgot';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { data: session, isPending } = useSession();
   const { clearStore, refreshResumes } = useAppStore();
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (session?.user) router.replace('/resumes');
+  }, [session?.user, router]);
+
+  if (isPending || session?.user) return null;
 
   const titles: Record<Mode, string> = {
     signin: 'Sign In',

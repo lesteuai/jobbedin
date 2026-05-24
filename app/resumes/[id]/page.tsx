@@ -8,6 +8,7 @@ import { YmModal } from '@/app/components/ym/YmModal';
 import { YmButton } from '@/app/components/ym/YmButton';
 import { MarkdownPanel } from '@/app/components/ym/MarkdownPanel';
 import { useAppStore } from '@/app/lib/app-store';
+import { useSession } from '@/app/lib/auth-client';
 import { useChat } from '@/app/hooks/use-chat';
 import { AnalysisReport } from '@/app/components/AnalysisReport';
 import type { Tab } from '@/app/components/AnalysisReport';
@@ -18,7 +19,12 @@ export default function ResumesJobsPage() {
   const router = useRouter();
   const params = useParams();
   const resumeId = typeof params.id === 'string' ? params.id : '';
+  const { data: session, isPending } = useSession();
   const { jobs, selectedJobId, selectJob, addJob, deleteJob, showError, selectResume } = useAppStore();
+
+  useEffect(() => {
+    if (!isPending && !session?.user) router.replace('/');
+  }, [isPending, session?.user, router]);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [view, setView] = useState<View>('idle');
   const [draft, setDraft] = useState('');
