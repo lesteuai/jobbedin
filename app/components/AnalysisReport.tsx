@@ -33,6 +33,14 @@ export function AnalysisReport({ selectedName, tab, setTab, analysisData, getPro
 
   const renderTabContent = () => {
     if (tab === 'Generate') {
+      const letterStatus = getProcessStatus('letter');
+      const messageStatus = getProcessStatus('message');
+      if (!letterStatus && !messageStatus) {
+        return <div style={{ color: '#666', fontStyle: 'italic' }}>Click Analyze to generate content.</div>;
+      }
+      if (['processing', 'pending'].includes(letterStatus ?? '') || ['processing', 'pending'].includes(messageStatus ?? '')) {
+        return <div style={{ color: '#666', fontStyle: 'italic' }}>Generating...</div>;
+      }
       return <ChatPanel {...chat} getProcessStatus={getProcessStatus} />;
     }
     const cfg = tabConfig[tab] ?? { processType: '', content: null };
