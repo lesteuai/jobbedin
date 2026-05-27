@@ -15,16 +15,17 @@ type Store = {
   addJob: (content: string) => Promise<string>;
   deleteResume: (id: string) => Promise<void>;
   deleteJob: (id: string) => Promise<void>;
-  selectResume: (id: string | null) => void;
+  selectResume: (id: string) => Promise<void>;
   selectJob: (id: string | null) => void;
   refreshResumes: () => Promise<void>;
   clearStore: () => void;
   showError: (message: string) => void;
+  setJobs: (jobs: Item[]) => void;
 };
 
 const Ctx = createContext<Store | null>(null);
 
-async function apiErrorMessage(res: Response, fallback: string): Promise<string> {
+export async function apiErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
     const json = await res.json();
     return json?.error ?? fallback;
@@ -71,22 +72,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setJobs([]);
       return;
     }
-    const fetchJobs = async () => {
-      try {
-        const res = await fetch(`/api/jobs?resumeId=${selectedResumeId}`);
-        if (!res.ok) {
-          const msg = await apiErrorMessage(res, 'Failed to fetch jobs');
-          showError(msg);
-          return;
-        }
-        const data = await res.json();
-        setJobs(data);
-      } catch (err) {
-        console.error('Error fetching jobs:', err);
-        showError('Failed to fetch jobs. Please try again.');
-      }
-    };
-    fetchJobs();
   }, [selectedResumeId, session?.user?.id]);
 
   const clearStore = () => {
@@ -139,6 +124,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     if (selectedJobId === id) setSelectedJobId(null);
   };
 
+  const selectResume = async (id: string) => {
+    setSelectedResumeId(id);
+    try {
+      const res = await fetch(`/api/resumes/${id}`);
+      if (!res.ok) {
+        const msg = await apiErrorMessage(res, 'Failed to fetch resume');
+        showError(msg);
+        return;
+      }
+      const resumeData = await res.json();
+      setResumes((p) => p.map((r) => (r.id === id ? resumeData : r)));
+    } catch (err) {
+      console.error('Error fetching resume:', err);
+      showError('Failed to fetch resume. Please try again.');
+    }
+  };
+
   return (
     <Ctx.Provider
       value={{
@@ -150,11 +152,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         addJob,
         deleteResume,
         deleteJob,
-        selectResume: setSelectedResumeId,
+        selectResume,
         selectJob: setSelectedJobId,
         refreshResumes,
         clearStore,
         showError,
+        setJobs,
       }}
     >
       {children}

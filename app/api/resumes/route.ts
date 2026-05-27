@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
     .select({
       id: resume.id,
       name: resume.name,
-      content: resume.content,
       createdAt: resume.createdAt,
+      updatedAt: resume.updatedAt
     })
     .from(resume)
     .where(eq(resume.userId, session.user.id))
@@ -74,12 +74,12 @@ export async function POST(request: NextRequest) {
   const nameWithoutExtension = filename.replace(/\.[^/.]+$/, '');
   const id = crypto.randomUUID();
 
-  const newResume = await db.insert(resume).values({
+  await db.insert(resume).values({
     id,
     userId: session.user.id,
     name: nameWithoutExtension,
     content,
-  }).returning();
+  });
 
-  return NextResponse.json(newResume[0], { status: 201 });
+  return NextResponse.json({ id }, { status: 201 });
 }

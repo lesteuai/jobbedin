@@ -7,7 +7,7 @@ import { Sidebar } from '@/app/components/ym/Sidebar';
 import { YmModal } from '@/app/components/ym/YmModal';
 import { YmButton } from '@/app/components/ym/YmButton';
 import { MarkdownPanel } from '@/app/components/ym/MarkdownPanel';
-import { useAppStore } from '@/app/lib/app-store';
+import { useAppStore, apiErrorMessage } from '@/app/lib/app-store';
 import { useSession } from '@/app/lib/auth-client';
 import { useChat } from '@/app/hooks/use-chat';
 import { AnalysisReport } from '@/app/components/AnalysisReport';
@@ -20,15 +20,10 @@ export default function ResumesJobsPage() {
   const params = useParams();
   const resumeId = typeof params.id === 'string' ? params.id : '';
   const { data: session, isPending } = useSession();
-  const { jobs, selectedJobId, selectJob, addJob, deleteJob, showError, selectResume } = useAppStore();
-
-  useEffect(() => {
-    if (!isPending && !session?.user) router.replace('/');
-  }, [isPending, session?.user, router]);
+  const { jobs, selectedJobId, selectJob, addJob, deleteJob, showError, setJobs } = useAppStore();
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [view, setView] = useState<View>('idle');
   const [draft, setDraft] = useState('');
-
   const [analysisData, setAnalysisData] = useState<{
     company: string | null;
     jdMatch: string | null;
@@ -37,16 +32,37 @@ export default function ResumesJobsPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [processStatuses, setProcessStatuses] = useState<Array<{ processType: string; status: string }>>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   const [tab, setTab] = useState<Tab>('Company');
   const chat = useChat(selectedJobId, tab);
 
-  const selected = jobs.find((j) => j.id === selectedJobId);
-  const pendingName = jobs.find((j) => j.id === pendingDelete)?.name;
+  useEffect(() => {
+    if (!isPending && !session?.user) router.replace('/');
+  }, [isPending, session?.user, router]);
+  
+  const fetchJobs = async (selectedResumeId: string) => {
+    try {
+      const res = await fetch(`/api/jobs?resumeId=${selectedResumeId}`);
+      if (!res.ok) {
+        const msg = await apiErrorMessage(res, 'Failed to fetch jobs');
+        showError(msg);
+        return;
+      }
+      const data = await res.json();
+      setJobs(data);
+    } catch (err) {
+      console.error('Error fetching jobs:', err);
+      showError('Failed to fetch jobs. Please try again.');
+    }
+  };
 
   useEffect(() => {
-    if (resumeId) selectResume(resumeId);
-  }, [resumeId, selectResume]);
+    if (resumeId && session?.user?.id) {
+      fetchJobs(resumeId);
+    }
+  }, [resumeId, session?.user?.id]);
+
+  const selected = jobs.find((j) => j.id === selectedJobId);
+  const pendingName = jobs.find((j) => j.id === pendingDelete)?.name;
 
   const getProcessStatus = (type: string) =>
     processStatuses.find((p) => p.processType === type)?.status ?? null;

@@ -13,11 +13,6 @@ import { useSession } from "@/app/lib/auth-client";
 export default function ResumesPage() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
-
-  useEffect(() => {
-    if (!isPending && !session?.user) router.replace('/');
-  }, [isPending, session?.user, router]);
-
   const {
     resumes,
     selectedResumeId,
@@ -30,6 +25,10 @@ export default function ResumesPage() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (!isPending && !session?.user) router.replace('/');
+  }, [isPending, session?.user, router]);
+  
   const selected = resumes.find((r) => r.id === selectedResumeId);
   const pendingName = resumes.find((r) => r.id === pendingDelete)?.name;
 
