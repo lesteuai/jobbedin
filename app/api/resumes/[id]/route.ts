@@ -17,42 +17,52 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth.api.getSession({ headers: request.headers });
+  try {
+    const session = await auth.api.getSession({ headers: request.headers });
 
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    const existing = await getExistingResume(id, session.user.id);
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(existing);
+  } catch (error) {
+    console.error('GET /api/resumes/[id] error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-
-  const { id } = await params;
-
-  const existing = await getExistingResume(id, session.user.id);
-
-  if (!existing) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
-
-  return NextResponse.json(existing);
 }
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth.api.getSession({ headers: request.headers });
+  try {
+    const session = await auth.api.getSession({ headers: request.headers });
 
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    const existing = await getExistingResume(id, session.user.id);
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    await db.delete(resume).where(eq(resume.id, id));
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('DELETE /api/resumes/[id] error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-
-  const { id } = await params;
-
-  const existing = await getExistingResume(id, session.user.id);
-
-  if (!existing) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
-
-  await db.delete(resume).where(eq(resume.id, id));
-
-  return NextResponse.json({ success: true });
 }
