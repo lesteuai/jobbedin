@@ -251,7 +251,7 @@ The `/api/jobs/[id]/analyze` endpoint triggers `runWorkflow()` asynchronously, w
 Each node updates its process status to Done or Failed upon completion. The workflow is fire-and-forget; the API returns 202 immediately. Frontend polls `/api/jobs/[id]/analysis` to check process statuses and display results as they complete.
 
 **Database in production:**
-PostgreSQL schema includes better-auth tables (user, session, account, verification) plus JobbedIn data tables (resumes, resume_jobs, companies, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history, process). Migrations are tracked in `drizzle/`. Environment variables must be set: PG_USER, PG_PASSWORD, PG_HOST, PG_PORT, PG_DATABASE (PostgreSQL), and BETTER_AUTH_SECRET, ORIGIN, ORIGIN_DEV (better-auth).
+PostgreSQL schema includes better-auth tables (user, session, account, verification) plus JobbedIn data tables (resumes, resume_jobs, companies, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history, process). Migrations are tracked in `drizzle/`. Environment variables must be set: PGUSER, PGPASSWORD, PGHOST, PGPORT, PGDATABASE (PostgreSQL), and BETTER_AUTH_SECRET, ORIGIN, ORIGIN_DEV (better-auth).
 
 **File handling:**
 Resume upload via hidden file input in `app/resumes/page.tsx`. Supports PDF, TXT, and Markdown files. PDF content is extracted to plain text using pdf-parse; TXT and MD files are decoded as UTF-8. File names (without extension) and content are stored in PostgreSQL. API route validates file type and returns 400 for unsupported formats.
@@ -317,7 +317,7 @@ pnpm install
 
 **Environment setup:**
 Copy `.env.example` to `.env.local` and fill in all values:
-- PostgreSQL credentials: PG_USER, PG_PASSWORD, PG_HOST, PG_PORT, PG_DATABASE
+- PostgreSQL credentials: PGUSER, PGPASSWORD, PGHOST, PGPORT, PGDATABASE
 - better-auth secret: BETTER_AUTH_SECRET (generate a random string for development; use a secure secret in production)
 - Origin URLs: ORIGIN (production domain), ORIGIN_DEV (http://localhost:3000 for development)
 - OpenRouter API: OPENROUTER_API_KEY (required for LangGraph workflow; get from https://openrouter.ai)

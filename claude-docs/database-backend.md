@@ -24,7 +24,7 @@ This module manages data persistence and backend processing for JobbedIn. It pro
 **File:** `app/lib/db/index.ts`
 
 ```typescript
-const dbUrl = `postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DATABASE}`;
+const dbUrl = `postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}`;
 export const client = postgres(dbUrl, { prepare: false });
 export const db = drizzle(client);
 ```
@@ -156,7 +156,7 @@ When all 5 process statuses reach Done or Failed, stop polling
 - `app/lib/db/schema.ts` — Table and enum definitions, ProcessStatus and ProcessType enums
 - `app/lib/auth.ts` — Session validation via better-auth
 - `app/lib/workflow.ts` — LangGraph nodes that write to database
-- Environment variables: `PG_USER`, `PG_PASSWORD`, `PG_HOST`, `PG_PORT`, `PG_DATABASE`
+- Environment variables: `PGUSER`, `PGPASSWORD`, `PGHOST`, `PGPORT`, `PGDATABASE`
 
 **External:**
 - `postgres` 3.4.9 — PostgreSQL client
@@ -187,11 +187,11 @@ When all 5 process statuses reach Done or Failed, stop polling
 
 **Environment variables:**
 All PostgreSQL connection details are environment-driven. Required variables are:
-- `PG_USER` — PostgreSQL username
-- `PG_PASSWORD` — PostgreSQL password
-- `PG_HOST` — Hostname (e.g., localhost, AWS RDS endpoint)
-- `PG_PORT` — Port (e.g., 5432)
-- `PG_DATABASE` — Database name
+- `PGUSER` — PostgreSQL username
+- `PGPASSWORD` — PostgreSQL password
+- `PGHOST` — Hostname (e.g., localhost, AWS RDS endpoint)
+- `PGPORT` — Port (e.g., 5432)
+- `PGDATABASE` — Database name
 
 Missing variables throw an error at runtime (checked in `app/lib/db/index.ts` and `drizzle.config.ts`).
 
