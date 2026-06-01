@@ -46,8 +46,8 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 - `app/resumes/page.tsx` — Resume management and preview (API-protected; userId-scoped); "To Job" button navigates to `/resumes/[resumeId]`
 - `app/resumes/[id]/page.tsx` — Job management and analysis hub for a selected resume (API-protected; userId-scoped); calls selectResume(resumeId) on mount via useParams(); delegates analysis display to `AnalysisReport` and chat logic to `useChat` hook
 - `app/lib/app-store.tsx` — React Context providing global resume/job state and CRUD operations
-- `app/lib/auth.ts` — better-auth server configuration with Drizzle ORM adapter
-- `app/lib/auth-client.ts` — better-auth client exports (signIn, signUp, signOut, useSession hook)
+- `app/lib/auth/index.ts` — better-auth server configuration with Drizzle ORM adapter
+- `app/lib/auth/client.ts` — better-auth client exports (signIn, signUp, signOut, useSession hook)
 
 ## Directory Structure
 
@@ -85,8 +85,9 @@ jobbedin/
 │   ├── lib/
 │   │   ├── api-handler.ts        # handleAsync wrapper: global try-catch for all API route handlers; logs and returns 500 on unhandled throws
 │   │   ├── app-store.tsx         # React Context for resume/job state management; session-gated data fetch; clearStore() on sign-out
-│   │   ├── auth.ts               # better-auth server configuration with Drizzle ORM adapter
-│   │   ├── auth-client.ts        # better-auth client exports for frontend consumption
+│   │   ├── auth/
+│   │   │   ├── index.ts          # better-auth server configuration with Drizzle ORM adapter
+│   │   │   └── client.ts         # better-auth client exports for frontend consumption
 │   │   ├── system-prompt.ts      # All 5 LLM system prompts: company_prompt, cross_reference_prompt, generate_letter_prompt, generate_msg_prompt, feedback_prompt
 │   │   ├── utils.ts              # Utility: cn() for class merging (clsx + tailwind-merge)
 │   │   ├── workflow.ts           # LangGraph multi-agent workflow: 5 nodes orchestrating analysis, research, generation
@@ -128,8 +129,8 @@ jobbedin/
 - `app/layout.tsx` — Entry point for all pages; wraps children with AppStoreProvider
 - `app/page.tsx` — Login page with better-auth sign-in/sign-up forms; public (no middleware protection)
 - `app/lib/api-handler.ts` — `handleAsync` generic wrapper used by all API routes; catches unhandled throws, logs `[METHOD] /path error:`, returns 500; routes export `const GET = handleAsync(async (req, ctx) => { ... })` instead of `async function GET`
-- `app/lib/auth.ts` — better-auth server initialization with Drizzle ORM adapter; uses BETTER_AUTH_SECRET and ORIGIN env vars
-- `app/lib/auth-client.ts` — better-auth client library exports (signIn, signUp, signOut, useSession hook) for frontend use
+- `app/lib/auth/index.ts` — better-auth server initialization with Drizzle ORM adapter; uses BETTER_AUTH_SECRET and ORIGIN env vars
+- `app/lib/auth/client.ts` — better-auth client library exports (signIn, signUp, signOut, useSession hook) for frontend use
 - `app/lib/app-store.tsx` — Defines Item type and Store context; data fetch is session-gated via `useSession()` (triggers `refreshResumes()` only when `session.user.id` is set); exposes `clearStore()` to reset all state on sign-out; CRUD operations backed by API endpoints (userId-scoped)
 - `app/lib/system-prompt.ts` — Exports all 5 LLM system prompts as named constants: `company_prompt` (company research), `cross_reference_prompt` (JD vs resume), `generate_letter_prompt` (cover letter), `generate_msg_prompt` (recruiter message), `feedback_prompt` (resume critique); shared between workflow.ts nodes and the chat refinement route
 - `app/hooks/use-chat.ts` — `useChat(selectedJobId, tab)` hook encapsulating all chat state and side effects: loads both letter and message conversation history from the API when the Generate tab opens, manages `mode`, `chats`, `chatDraft`, `isAiTyping`, `typingDots`, `chatContainerRef`, `handleSend`, and `handleClear`; exports `Mode` and `ChatLine` types

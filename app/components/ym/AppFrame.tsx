@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { authClient } from "@/app/lib/auth-client";
+import { authClient } from "@/app/lib/auth/client";
 import { useAppStore } from "@/app/lib/app-store";
 
 export function AppFrame({ children }: { children: ReactNode }) {

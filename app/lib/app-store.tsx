@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { useSession } from "@/app/lib/auth-client";
+import { useSession } from "@/app/lib/auth/client";
 import { YmErrorModal } from "@/app/components/ym/YmErrorModal";
 
 export type Item = { id: string; name: string; content: string };

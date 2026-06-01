@@ -8,7 +8,7 @@ import { YmModal } from '@/app/components/ym/YmModal';
 import { YmButton } from '@/app/components/ym/YmButton';
 import { MarkdownPanel } from '@/app/components/ym/MarkdownPanel';
 import { useAppStore, apiErrorMessage } from '@/app/lib/app-store';
-import { useSession } from '@/app/lib/auth-client';
+import { useSession } from '@/app/lib/auth/client';
 import { useChat } from '@/app/hooks/use-chat';
 import { AnalysisReport } from '@/app/components/AnalysisReport';
 import type { Tab } from '@/app/components/AnalysisReport';

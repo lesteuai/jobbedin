@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, type FormEvent } from 'react';
-import { authClient, useSession } from '@/app/lib/auth-client';
+import { authClient, useSession } from '@/app/lib/auth/client';
 import { YmButton } from '@/app/components/ym/YmButton';
 import { useAppStore } from '@/app/lib/app-store';
 

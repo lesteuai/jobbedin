@@ -155,7 +155,7 @@ When all 5 process statuses reach Done or Failed, stop polling
 
 **Internal:**
 - `app/lib/db/schema.ts` — Table and enum definitions, ProcessStatus and ProcessType enums
-- `app/lib/auth.ts` — Session validation via better-auth
+- `app/lib/auth/index.ts` — Session validation via better-auth
 - `app/lib/workflow.ts` — LangGraph nodes that write to database
 - Environment variables: `PGUSER`, `PGPASSWORD`, `PGHOST`, `PGPORT`, `PGDATABASE`
 

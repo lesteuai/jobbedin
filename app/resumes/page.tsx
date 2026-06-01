@@ -8,7 +8,7 @@ import { YmModal } from "@/app/components/ym/YmModal";
 import { YmButton } from "@/app/components/ym/YmButton";
 import { MarkdownPanel } from "@/app/components/ym/MarkdownPanel";
 import { useAppStore } from "@/app/lib/app-store";
-import { useSession } from "@/app/lib/auth-client";
+import { useSession } from "@/app/lib/auth/client";
 
 export default function ResumesPage() {
   const router = useRouter();
