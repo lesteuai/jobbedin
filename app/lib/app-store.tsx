@@ -149,21 +149,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setSelectedJobId(id);
     const alreadyLoaded = jobs.find((j) => j.id === id && j.content);
     if (alreadyLoaded) return;
-    let res: Response;
     try {
-      res = await fetch(`/api/jobs/${id}`);
+      const res = await fetch(`/api/jobs/${id}`);
+      if (!res.ok) {
+        const msg = await apiErrorMessage(res, 'Failed to fetch job');
+        showError(msg);
+        return;
+      }
+      const jobData = await res.json();
+      setJobs((p) => p.map((j) => (j.id === id ? { ...j, ...jobData } : j)));
     } catch (err) {
       console.error('Error fetching job:', err);
       showError('Failed to fetch job. Please try again.');
-      throw err;
     }
-    if (!res.ok) {
-      const msg = await apiErrorMessage(res, 'Failed to fetch job');
-      showError(msg);
-      throw new Error(msg);
-    }
-    const jobData = await res.json();
-    setJobs((p) => p.map((j) => (j.id === id ? { ...j, ...jobData } : j)));
   };
 
   return (

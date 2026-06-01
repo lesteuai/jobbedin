@@ -69,12 +69,8 @@ export default function ResumesJobsPage() {
 
   const handleSelect = async (id: string) => {
     setDraft('');
-    try {
-      await selectJob(id);
-      setView('view');
-    } catch {
-      // selectJob already called showError; stay on current view
-    }
+    await selectJob(id);
+    setView('view');
   };
 
   const stopPolling = () => {
