@@ -131,7 +131,7 @@ jobbedin/
 - `app/lib/api-handler.ts` — `handleAsync` generic wrapper used by all API routes; catches unhandled throws, logs `[METHOD] /path error:`, returns 500; routes export `const GET = handleAsync(async (req, ctx) => { ... })` instead of `async function GET`
 - `app/lib/auth/index.ts` — better-auth server initialization with Drizzle ORM adapter; uses BETTER_AUTH_SECRET and ORIGIN env vars
 - `app/lib/auth/client.ts` — better-auth client library exports (signIn, signUp, signOut, useSession hook) for frontend use
-- `app/lib/app-store.tsx` — Defines Item type and Store context; data fetch is session-gated via `useSession()` (triggers `refreshResumes()` only when `session.user.id` is set); exposes `clearStore()` to reset all state on sign-out; CRUD operations backed by API endpoints (userId-scoped)
+- `app/lib/app-store.tsx` — Defines Item type and Store context; data fetch is session-gated via `useSession()` (triggers `refreshResumes()` only when `session.user.id` is set); exposes `clearStore()` to reset all state on sign-out; CRUD operations backed by API endpoints (userId-scoped); `selectJob(id | null)` is now async and fetches full job data from `GET /api/jobs/${id}` when selected (skips fetch if job content already loaded); throws on error after calling showError
 - `app/lib/system-prompt.ts` — Exports all 5 LLM system prompts as named constants: `company_prompt` (company research), `cross_reference_prompt` (JD vs resume), `generate_letter_prompt` (cover letter), `generate_msg_prompt` (recruiter message), `feedback_prompt` (resume critique); shared between workflow.ts nodes and the chat refinement route
 - `app/hooks/use-chat.ts` — `useChat(selectedJobId, tab)` hook encapsulating all chat state and side effects: loads both letter and message conversation history from the API when the Generate tab opens, manages `mode`, `chats`, `chatDraft`, `isAiTyping`, `typingDots`, `chatContainerRef`, `handleSend`, and `handleClear`; exports `Mode` and `ChatLine` types
 - `app/components/AnalysisReport.tsx` — Renders the analysis panel: tab bar (Company/JDMatch/Feedback/Generate), per-tab content based on process status, and delegates the Generate tab to `ChatPanel`; exports `TABS` and `Tab` type
@@ -140,7 +140,7 @@ jobbedin/
 - `app/lib/db/schema.ts` — Drizzle ORM table definitions: better-auth tables (user, session, account, verification) + data tables (resumes, resume_jobs, companies, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history, process); all non-auth tables have userId FK and updatedAt $onUpdate
 - `app/lib/db/index.ts` — PostgreSQL client initialization with environment variable validation and Drizzle ORM schema setup
 - `app/resumes/page.tsx` — Resume list, selection, markdown preview; file upload triggers userId-scoped API POST and state refresh; supports .pdf, .txt, .md; "To Job" button navigates to `/resumes/${selectedResumeId}`
-- `app/resumes/[id]/page.tsx` — Job analysis hub for a selected resume: accepts resumeId from URL via useParams(), calls selectResume(resumeId) on mount; manages job list, add/delete, polling, and view state; delegates analysis display to `AnalysisReport` and chat logic to `useChat` hook
+- `app/resumes/[id]/page.tsx` — Job analysis hub for a selected resume: accepts resumeId from URL via useParams(), calls selectResume(resumeId) on mount; manages job list, add/delete, polling, and view state; delegates analysis display to `AnalysisReport` and chat logic to `useChat` hook; `handleSelect(id)` is now async and awaits `selectJob(id)` before switching view to 'view' (wrapped in try/catch; failed fetch keeps current view); `addJob` onClick is async, awaits both `addJob()` and `selectJob(id)` in sequence before clearing draft and switching view
 - `app/api/auth/[...all]/route.ts` — better-auth handler; routes all /api/auth/* requests through better-auth
 - `app/api/resumes/route.ts` — GET all resumes (userId-scoped), POST upload resume with name (userId-scoped); validates session
 - `app/api/resumes/[id]/route.ts` — DELETE resume by id (userId-scoped); validates session
@@ -313,6 +313,9 @@ The `/api/jobs/[id]/analyze` endpoint calls `void runWorkflow()` without awaitin
 
 **Process status tracking is per-node:**
 Each workflow node independently updates its own process record in the database. If multiple nodes fail, their statuses will be Failed independently. The frontend polls and displays all 5 statuses, but there is no aggregated error summary or retry mechanism at the node level.
+
+**Job lazy-loading and caching:**
+`selectJob(id)` now fetches full job data from the API if not already loaded (detected by checking if the job's content field is present). Once loaded, subsequent calls to `selectJob(id)` skip the fetch. This prevents redundant API calls when switching between jobs. If the fetch fails, `selectJob` throws after calling `showError`; callers like `handleSelect` catch this exception and remain on the current view.
 
 ## Development Workflow
 
