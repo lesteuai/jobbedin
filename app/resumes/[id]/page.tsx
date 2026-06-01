@@ -69,8 +69,12 @@ export default function ResumesJobsPage() {
 
   const handleSelect = async (id: string) => {
     setDraft('');
-    await selectJob(id);
-    setView('view');
+    try {
+      await selectJob(id);
+      setView('view');
+    } catch {
+      // selectJob already called showError; stay on current view
+    }
   };
 
   const stopPolling = () => {
@@ -181,12 +185,11 @@ export default function ResumesJobsPage() {
                   <YmButton
                     variant="primary"
                     disabled={!draft.trim()}
-                    onClick={() => {
-                      addJob(draft.trim()).then((id) => {
-                        selectJob(id);
-                        setDraft('');
-                        setView('view');
-                      });
+                    onClick={async () => {
+                      const id = await addJob(draft.trim());
+                      await selectJob(id);
+                      setDraft('');
+                      setView('view');
                     }}
                   >
                     OK
