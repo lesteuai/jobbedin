@@ -67,10 +67,10 @@ export default function ResumesJobsPage() {
   const getProcessStatus = (type: string) =>
     processStatuses.find((p) => p.processType === type)?.status ?? null;
 
-  const handleSelect = (id: string) => {
-    setView('view');
+  const handleSelect = async (id: string) => {
     setDraft('');
-    selectJob(id);
+    await selectJob(id);
+    setView('view');
   };
 
   const stopPolling = () => {

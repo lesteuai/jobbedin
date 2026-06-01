@@ -16,7 +16,7 @@ type Store = {
   deleteResume: (id: string) => Promise<void>;
   deleteJob: (id: string) => Promise<void>;
   selectResume: (id: string) => Promise<void>;
-  selectJob: (id: string | null) => void;
+  selectJob: (id: string | null) => Promise<void>;
   refreshResumes: () => Promise<void>;
   clearStore: () => void;
   showError: (message: string) => void;
@@ -141,6 +141,27 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const selectJob = async (id: string | null) => {
+    if (id === null) {
+      setSelectedJobId(null);
+      return;
+    }
+    setSelectedJobId(id);
+    try {
+      const res = await fetch(`/api/jobs/${id}`);
+      if (!res.ok) {
+        const msg = await apiErrorMessage(res, 'Failed to fetch job');
+        showError(msg);
+        return;
+      }
+      const jobData = await res.json();
+      setJobs((p) => p.map((j) => (j.id === id ? { ...j, ...jobData } : j)));
+    } catch (err) {
+      console.error('Error fetching job:', err);
+      showError('Failed to fetch job. Please try again.');
+    }
+  };
+
   return (
     <Ctx.Provider
       value={{
@@ -153,7 +174,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         deleteResume,
         deleteJob,
         selectResume,
-        selectJob: setSelectedJobId,
+        selectJob,
         refreshResumes,
         clearStore,
         showError,
