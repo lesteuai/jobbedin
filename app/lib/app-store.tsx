@@ -126,6 +126,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const selectResume = async (id: string) => {
     setSelectedResumeId(id);
+    const alreadyLoaded = resumes.find((r) => r.id === id && r.content);
+    if (alreadyLoaded) return;
     try {
       const res = await fetch(`/api/resumes/${id}`);
       if (!res.ok) {
