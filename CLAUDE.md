@@ -83,6 +83,7 @@ jobbedin/
 │   │       ├── YmModal.tsx       # Confirmation dialog
 │   │       └── MarkdownPanel.tsx # Markdown renderer for content display
 │   ├── lib/
+│   │   ├── api-handler.ts        # handleAsync wrapper: global try-catch for all API route handlers; logs and returns 500 on unhandled throws
 │   │   ├── app-store.tsx         # React Context for resume/job state management; session-gated data fetch; clearStore() on sign-out
 │   │   ├── auth.ts               # better-auth server configuration with Drizzle ORM adapter
 │   │   ├── auth-client.ts        # better-auth client exports for frontend consumption
@@ -126,6 +127,7 @@ jobbedin/
 
 - `app/layout.tsx` — Entry point for all pages; wraps children with AppStoreProvider
 - `app/page.tsx` — Login page with better-auth sign-in/sign-up forms; public (no middleware protection)
+- `app/lib/api-handler.ts` — `handleAsync` generic wrapper used by all API routes; catches unhandled throws, logs `[METHOD] /path error:`, returns 500; routes export `const GET = handleAsync(async (req, ctx) => { ... })` instead of `async function GET`
 - `app/lib/auth.ts` — better-auth server initialization with Drizzle ORM adapter; uses BETTER_AUTH_SECRET and ORIGIN env vars
 - `app/lib/auth-client.ts` — better-auth client library exports (signIn, signUp, signOut, useSession hook) for frontend use
 - `app/lib/app-store.tsx` — Defines Item type and Store context; data fetch is session-gated via `useSession()` (triggers `refreshResumes()` only when `session.user.id` is set); exposes `clearStore()` to reset all state on sign-out; CRUD operations backed by API endpoints (userId-scoped)
@@ -280,6 +282,9 @@ In the "Generate" tab, users switch between "Cover Letter" and "Message" modes a
 
 **No middleware route protection:**
 The middleware.ts file was removed. Pages like /resumes and /jobs are now publicly accessible but will fail to load data if session is missing (API returns 401). To add back server-side protection, implement a middleware.ts that checks session before allowing access to protected routes.
+
+**API error handling pattern:**
+All API routes use `handleAsync` from `app/lib/api-handler.ts` instead of per-handler try-catch blocks. Wrap each exported handler: `export const GET = handleAsync(async (request, ctx) => { ... })`. Unhandled throws are caught globally, logged, and returned as 500. Intentional error responses (401, 400, 404) are still returned explicitly inside the handler. The wrapper is generic and supports both plain routes and dynamic `[id]` routes via rest-parameter forwarding.
 
 **API session validation pattern:**
 Every API route uses `auth.api.getSession({ headers: request.headers })` to validate. This must be called before any database query. If missing, the route is vulnerable to unauthenticated access. All data queries must also use `eq(table.userId, session.user.id)` to prevent cross-user data leaks.
