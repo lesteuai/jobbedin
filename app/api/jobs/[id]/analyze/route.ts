@@ -27,6 +27,10 @@ export const POST = handleAsync(async (request: NextRequest, { params }: { param
 
   const { id: jobId } = await params;
 
+  if (!jobId) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  }
+
   const job = await db
     .select()
     .from(resumeJob)

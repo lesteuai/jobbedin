@@ -26,9 +26,9 @@ export const GET = handleAsync(async (request: NextRequest) => {
     .select({
       id: resumeJob.id,
       name: resumeJob.name,
-      content: resumeJob.content,
       resumeId: resumeJob.resumeId,
       createdAt: resumeJob.createdAt,
+      updatedAt: resumeJob.updatedAt,
     })
     .from(resumeJob)
     .where(and(eq(resumeJob.resumeId, resumeId), eq(resumeJob.userId, session.user.id)))

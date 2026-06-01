@@ -14,6 +14,10 @@ export const GET = handleAsync(async (request: NextRequest, { params }: { params
 
   const { id: jobId } = await params;
 
+  if (!jobId) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  }
+
   const job = await db
     .select()
     .from(resumeJob)

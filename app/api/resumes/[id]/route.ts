@@ -25,6 +25,14 @@ export const GET = handleAsync(async (
   }
 
   const { id } = await params;
+
+  if (!id) {
+    return NextResponse.json(
+      { error: 'id query parameter is required' },
+      { status: 400 }
+    );
+  }
+
   const existing = await getExistingResume(id, session.user.id);
 
   if (!existing) {
@@ -45,6 +53,11 @@ export const DELETE = handleAsync(async (
   }
 
   const { id } = await params;
+
+  if (!id) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  }
+
   const existing = await getExistingResume(id, session.user.id);
 
   if (!existing) {

@@ -31,6 +31,11 @@ export const GET = handleAsync(async (
   }
 
   const { id: jobId } = await params;
+
+  if (!jobId) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  }
+
   const mode = request.nextUrl.searchParams.get('mode') as 'letter' | 'message' | null;
 
   if (!mode || !['letter', 'message'].includes(mode)) {
@@ -71,6 +76,11 @@ export const POST = handleAsync(async (
   }
 
   const { id: jobId } = await params;
+
+  if (!jobId) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  }
+
   const body = await request.json();
   const { mode, userMessage, conversation } = body as {
     mode: 'letter' | 'message';
