@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
-import { company, jobDescriptionMatch, resumeFeedback, coverLetterHistory, messageGenHistory, process as processTable, resumeJob } from '@/app/lib/db/schema';
+import { resumeJob } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { handleAsyncAuth, BadRequestException, NotFoundException } from '@/app/lib/api-handler';
 
+// Get analysis and messages for a ResumeJob
 export const GET = handleAsyncAuth(async (request: NextRequest, session, { params }: { params: Promise<{ id: string }> }) => {
 
   const { id: jobId } = await params;
@@ -12,31 +13,29 @@ export const GET = handleAsyncAuth(async (request: NextRequest, session, { param
     throw new BadRequestException('id is required');
   }
 
-  const job = await db
-    .select()
-    .from(resumeJob)
-    .where(and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)));
+  const job = await db.query.resumeJob.findFirst({
+    where: and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)),
+    with: {
+      company: true,
+      jobDescriptionMatch: true,
+      resumeFeedback: true,
+      coverLetterHistory: true,
+      messageGenHistory: true,
+      processes: true,
+    },
+  });
 
-  if (job.length === 0) {
+  if (!job) {
     throw new NotFoundException('Not found');
   }
 
-  const [companyRow, jdMatchRow, feedbackRow, letterRow, messageRow, processes] = await Promise.all([
-    db.select().from(company).where(eq(company.jobId, jobId)).then(rows => rows[0]),
-    db.select().from(jobDescriptionMatch).where(eq(jobDescriptionMatch.jobId, jobId)).then(rows => rows[0]),
-    db.select().from(resumeFeedback).where(eq(resumeFeedback.jobId, jobId)).then(rows => rows[0]),
-    db.select().from(coverLetterHistory).where(eq(coverLetterHistory.jobId, jobId)).then(rows => rows[0]),
-    db.select().from(messageGenHistory).where(eq(messageGenHistory.jobId, jobId)).then(rows => rows[0]),
-    db.select().from(processTable).where(eq(processTable.jobId, jobId)),
-  ]);
-
   return NextResponse.json({
-    company: companyRow?.content || null,
-    jdMatch: jdMatchRow?.content || null,
-    feedback: feedbackRow?.content || null,
-    letterConversation: letterRow?.conversation ?? null,
-    messageConversation: messageRow?.conversation ?? null,
-    processes: processes.map((p) => ({
+    company: job.company?.content ?? null,
+    jdMatch: job.jobDescriptionMatch?.content ?? null,
+    feedback: job.resumeFeedback?.content ?? null,
+    letterConversation: job.coverLetterHistory?.conversation ?? null,
+    messageConversation: job.messageGenHistory?.conversation ?? null,
+    processes: job.processes.map((p) => ({
       processType: p.processType,
       status: p.status,
     })),

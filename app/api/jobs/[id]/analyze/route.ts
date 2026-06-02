@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import {
   resumeJob,
-  resume,
   company,
   jobDescriptionMatch,
   resumeFeedback,
@@ -17,6 +16,7 @@ import { runWorkflow } from '@/app/lib/workflow';
 import { randomUUID } from 'crypto';
 import { handleAsyncAuth, BadRequestException, NotFoundException } from '@/app/lib/api-handler';
 
+// Send "Analyze" from ResumeJob screen to here to process
 export const POST = handleAsyncAuth(async (request: NextRequest, session, { params }: { params: Promise<{ id: string }> }) => {
 
   const { id: jobId } = await params;
@@ -25,31 +25,24 @@ export const POST = handleAsyncAuth(async (request: NextRequest, session, { para
     throw new BadRequestException('id is required');
   }
 
-  const job = await db
-    .select()
-    .from(resumeJob)
-    .where(and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)));
+  const job = await db.query.resumeJob.findFirst({
+    where: and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)),
+    with: {
+      resume: true,
+      processes: true,
+    },
+  });
 
-  if (job.length === 0) {
+  if (!job) {
     throw new NotFoundException('Not found');
   }
 
-  const processes = await db
-    .select()
-    .from(processTable)
-    .where(eq(processTable.jobId, jobId));
-
   if (
-    processes.length === 5 &&
-    processes.every((p) => p.status === ProcessStatus.Done)
+    job.processes.length === 5 &&
+    job.processes.every((p) => p.status === ProcessStatus.Done)
   ) {
     return NextResponse.json({ status: 'done' });
   }
-
-  const [resumeRow] = await db
-    .select()
-    .from(resume)
-    .where(eq(resume.id, job[0].resumeId));
 
   await Promise.all([
     db.delete(company).where(eq(company.jobId, jobId)),
@@ -60,49 +53,19 @@ export const POST = handleAsyncAuth(async (request: NextRequest, session, { para
     db.delete(processTable).where(eq(processTable.jobId, jobId)),
   ]);
 
-  await Promise.all([
-    db.insert(processTable).values({
-      id: randomUUID(),
-      userId: session.user.id,
-      jobId,
-      processType: ProcessType.Company,
-      status: ProcessStatus.Processing,
-    }),
-    db.insert(processTable).values({
-      id: randomUUID(),
-      userId: session.user.id,
-      jobId,
-      processType: ProcessType.JDMatch,
-      status: ProcessStatus.Processing,
-    }),
-    db.insert(processTable).values({
-      id: randomUUID(),
-      userId: session.user.id,
-      jobId,
-      processType: ProcessType.ResumeFeedback,
-      status: ProcessStatus.Processing,
-    }),
-    db.insert(processTable).values({
-      id: randomUUID(),
-      userId: session.user.id,
-      jobId,
-      processType: ProcessType.Letter,
-      status: ProcessStatus.Pending,
-    }),
-    db.insert(processTable).values({
-      id: randomUUID(),
-      userId: session.user.id,
-      jobId,
-      processType: ProcessType.Message,
-      status: ProcessStatus.Pending,
-    }),
+  await db.insert(processTable).values([
+    { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.Company, status: ProcessStatus.Processing },
+    { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.JDMatch, status: ProcessStatus.Processing },
+    { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.ResumeFeedback, status: ProcessStatus.Processing },
+    { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.Letter, status: ProcessStatus.Pending },
+    { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.Message, status: ProcessStatus.Pending },
   ]);
 
   void runWorkflow({
     jobId,
     userId: session.user.id,
-    resumeText: resumeRow?.content ?? '',
-    jobText: job[0].content ?? '',
+    resumeText: job.resume?.content ?? '',
+    jobText: job.content ?? '',
   });
 
   return NextResponse.json({ status: 'started' }, { status: 202 });
