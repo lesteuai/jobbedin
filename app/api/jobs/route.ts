@@ -3,15 +3,10 @@ import { db } from '@/app/lib/db';
 import { resumeJob } from '@/app/lib/db/schema';
 import { eq, and, count } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { auth } from '@/app/lib/auth';
-import { handleAsync } from '@/app/lib/api-handler';
+import { handleAsync, getSessionOrThrow } from '@/app/lib/api-handler';
 
 export const GET = handleAsync(async (request: NextRequest) => {
-  const session = await auth.api.getSession({ headers: request.headers });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const session = await getSessionOrThrow(request);
 
   const resumeId = request.nextUrl.searchParams.get('resumeId');
 
@@ -38,11 +33,7 @@ export const GET = handleAsync(async (request: NextRequest) => {
 });
 
 export const POST = handleAsync(async (request: NextRequest) => {
-  const session = await auth.api.getSession({ headers: request.headers });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const session = await getSessionOrThrow(request);
 
   const body = await request.json();
   const { resumeId, content } = body;

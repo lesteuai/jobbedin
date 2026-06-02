@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { coverLetterHistory, messageGenHistory, resumeJob, company, jobDescriptionMatch, resume } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { auth } from '@/app/lib/auth';
 import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
 import { generate_letter_prompt, generate_msg_prompt } from '@/app/lib/system-prompt';
-import { handleAsync } from '@/app/lib/api-handler';
+import { handleAsync, getSessionOrThrow } from '@/app/lib/api-handler';
 
 type ChatLine = {
   role: 'user' | 'ai';
@@ -24,11 +23,7 @@ export const GET = handleAsync(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) => {
-  const session = await auth.api.getSession({ headers: request.headers });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const session = await getSessionOrThrow(request);
 
   const { id: jobId } = await params;
 
@@ -69,11 +64,7 @@ export const POST = handleAsync(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) => {
-  const session = await auth.api.getSession({ headers: request.headers });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const session = await getSessionOrThrow(request);
 
   const { id: jobId } = await params;
 

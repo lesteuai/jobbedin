@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { resumeJob } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { auth } from '@/app/lib/auth';
-import { handleAsync } from '@/app/lib/api-handler';
+import { handleAsync, getSessionOrThrow } from '@/app/lib/api-handler';
 
 async function getExistingJob(id: string, userId: string) {
   const result = await db
@@ -18,11 +17,7 @@ export const GET = handleAsync(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) => {
-  const session = await auth.api.getSession({ headers: request.headers });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const session = await getSessionOrThrow(request);
 
   const { id } = await params;
 
@@ -46,11 +41,7 @@ export const DELETE = handleAsync(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) => {
-  const session = await auth.api.getSession({ headers: request.headers });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const session = await getSessionOrThrow(request);
 
   const { id } = await params;
 

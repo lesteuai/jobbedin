@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/app/lib/auth';
 import { db } from '@/app/lib/db';
 import {
   resumeJob,
@@ -16,14 +15,10 @@ import {
 import { eq, and } from 'drizzle-orm';
 import { runWorkflow } from '@/app/lib/workflow';
 import { randomUUID } from 'crypto';
-import { handleAsync } from '@/app/lib/api-handler';
+import { handleAsync, getSessionOrThrow } from '@/app/lib/api-handler';
 
 export const POST = handleAsync(async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-  const session = await auth.api.getSession({ headers: request.headers });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const session = await getSessionOrThrow(request);
 
   const { id: jobId } = await params;
 

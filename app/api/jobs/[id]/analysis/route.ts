@@ -2,15 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { company, jobDescriptionMatch, resumeFeedback, coverLetterHistory, messageGenHistory, process as processTable, resumeJob } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { auth } from '@/app/lib/auth';
-import { handleAsync } from '@/app/lib/api-handler';
+import { handleAsync, getSessionOrThrow } from '@/app/lib/api-handler';
 
 export const GET = handleAsync(async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-  const session = await auth.api.getSession({ headers: request.headers });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const session = await getSessionOrThrow(request);
 
   const { id: jobId } = await params;
 
