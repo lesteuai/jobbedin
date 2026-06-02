@@ -3,17 +3,14 @@ import { db } from '@/app/lib/db';
 import { resumeJob } from '@/app/lib/db/schema';
 import { eq, and, count } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { handleAsyncAuth } from '@/app/lib/api-handler';
+import { handleAsyncAuth, BadRequestException } from '@/app/lib/api-handler';
 
 export const GET = handleAsyncAuth(async (request: NextRequest, session) => {
 
   const resumeId = request.nextUrl.searchParams.get('resumeId');
 
   if (!resumeId) {
-    return NextResponse.json(
-      { error: 'resumeId query parameter is required' },
-      { status: 400 }
-    );
+    throw new BadRequestException('resumeId query parameter is required');
   }
 
   const jobs = await db
@@ -37,10 +34,7 @@ export const POST = handleAsyncAuth(async (request: NextRequest, session) => {
   const { resumeId, content } = body;
 
   if (!resumeId || !content) {
-    return NextResponse.json(
-      { error: 'resumeId and content are required' },
-      { status: 400 }
-    );
+    throw new BadRequestException('resumeId and content are required');
   }
 
   const existingCount = await db

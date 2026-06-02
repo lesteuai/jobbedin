@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/lib/auth';
 
+export class BadRequestException extends Error {
+  constructor(message: string = 'Bad request') {
+    super(message);
+    this.name = 'BadRequestException';
+  }
+}
+
 export class UnauthorizedException extends Error {
   constructor(message: string = 'Unauthorized') {
     super(message);
     this.name = 'UnauthorizedException';
+  }
+}
+
+export class NotFoundException extends Error {
+  constructor(message: string = 'Not found') {
+    super(message);
+    this.name = 'NotFoundException';
   }
 }
 
@@ -23,8 +37,14 @@ function withErrorHandling<T extends unknown[]>(
     try {
       return await fn(request, ...args);
     } catch (error) {
+      if (error instanceof BadRequestException) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
       if (error instanceof UnauthorizedException) {
         return NextResponse.json({ error: error.message }, { status: 401 });
+      }
+      if (error instanceof NotFoundException) {
+        return NextResponse.json({ error: error.message }, { status: 404 });
       }
       console.error(`[${request.method}] ${request.nextUrl.pathname} error:`, error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

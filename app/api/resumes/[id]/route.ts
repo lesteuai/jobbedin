@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { resume } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { handleAsyncAuth } from '@/app/lib/api-handler';
+import { handleAsyncAuth, BadRequestException, NotFoundException } from '@/app/lib/api-handler';
 
 async function getExistingResume(id: string, userId: string) {
   const result = await db
@@ -22,16 +22,13 @@ export const GET = handleAsyncAuth(async (
   const { id } = await params;
 
   if (!id) {
-    return NextResponse.json(
-      { error: 'id query parameter is required' },
-      { status: 400 }
-    );
+    throw new BadRequestException('id query parameter is required');
   }
 
   const existing = await getExistingResume(id, session.user.id);
 
   if (!existing) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    throw new NotFoundException('Not found');
   }
 
   return NextResponse.json(existing);
@@ -46,13 +43,13 @@ export const DELETE = handleAsyncAuth(async (
   const { id } = await params;
 
   if (!id) {
-    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    throw new BadRequestException('id is required');
   }
 
   const existing = await getExistingResume(id, session.user.id);
 
   if (!existing) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    throw new NotFoundException('Not found');
   }
 
   await db.delete(resume).where(eq(resume.id, id));

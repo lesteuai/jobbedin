@@ -4,7 +4,7 @@ import { resume } from '@/app/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import "pdf-parse/worker";
 import { PDFParse } from "pdf-parse";
-import { handleAsyncAuth } from '@/app/lib/api-handler';
+import { handleAsyncAuth, BadRequestException } from '@/app/lib/api-handler';
 
 export const GET = handleAsyncAuth(async (request: NextRequest, session) => {
 
@@ -28,7 +28,7 @@ export const POST = handleAsyncAuth(async (request: NextRequest, session) => {
   const file = formData.get('file') as File;
 
   if (!file) {
-    return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    throw new BadRequestException('No file provided');
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -44,15 +44,12 @@ export const POST = handleAsyncAuth(async (request: NextRequest, session) => {
       content = textResult.text;
     } catch (error) {
       console.log(`Error parsing PDF: ${error}`);
-      return NextResponse.json({ error: 'Failed to parse PDF' }, { status: 400 });
+      throw new BadRequestException('Failed to parse PDF');
     }
   } else if (extension === 'txt' || extension === 'md') {
     content = buffer.toString('utf-8');
   } else {
-    return NextResponse.json(
-      { error: 'Unsupported file type. Supported: .pdf, .txt, .md' },
-      { status: 400 }
-    );
+    throw new BadRequestException('Unsupported file type. Supported: .pdf, .txt, .md');
   }
 
   const nameWithoutExtension = filename.replace(/\.[^/.]+$/, '');

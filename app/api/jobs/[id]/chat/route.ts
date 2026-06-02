@@ -5,7 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
 import { generate_letter_prompt, generate_msg_prompt } from '@/app/lib/system-prompt';
-import { handleAsyncAuth } from '@/app/lib/api-handler';
+import { handleAsyncAuth, BadRequestException, NotFoundException } from '@/app/lib/api-handler';
 
 type ChatLine = {
   role: 'user' | 'ai';
@@ -28,16 +28,13 @@ export const GET = handleAsyncAuth(async (
   const { id: jobId } = await params;
 
   if (!jobId) {
-    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    throw new BadRequestException('id is required');
   }
 
   const mode = request.nextUrl.searchParams.get('mode') as 'letter' | 'message' | null;
 
   if (!mode || !['letter', 'message'].includes(mode)) {
-    return NextResponse.json(
-      { error: 'Invalid mode parameter. Must be "letter" or "message"' },
-      { status: 400 }
-    );
+    throw new BadRequestException('Invalid mode parameter. Must be "letter" or "message"');
   }
 
   const job = await db
@@ -46,7 +43,7 @@ export const GET = handleAsyncAuth(async (
     .where(and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)));
 
   if (job.length === 0) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    throw new NotFoundException('Not found');
   }
 
   const table = mode === 'letter' ? coverLetterHistory : messageGenHistory;
@@ -69,7 +66,7 @@ export const POST = handleAsyncAuth(async (
   const { id: jobId } = await params;
 
   if (!jobId) {
-    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    throw new BadRequestException('id is required');
   }
 
   const body = await request.json();
@@ -80,10 +77,7 @@ export const POST = handleAsyncAuth(async (
   };
 
   if (!mode || !['letter', 'message'].includes(mode)) {
-    return NextResponse.json(
-      { error: 'Invalid mode. Must be "letter" or "message"' },
-      { status: 400 }
-    );
+    throw new BadRequestException('Invalid mode. Must be "letter" or "message"');
   }
 
   const job = await db
@@ -92,7 +86,7 @@ export const POST = handleAsyncAuth(async (
     .where(and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)));
 
   if (job.length === 0) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    throw new NotFoundException('Not found');
   }
 
   const table = mode === 'letter' ? coverLetterHistory : messageGenHistory;
@@ -100,10 +94,7 @@ export const POST = handleAsyncAuth(async (
   // Legacy path: clear conversation
   if (conversation !== undefined && userMessage === undefined) {
     if (!Array.isArray(conversation)) {
-      return NextResponse.json(
-        { error: 'conversation must be an array' },
-        { status: 400 }
-      );
+      throw new BadRequestException('conversation must be an array');
     }
 
     await db.delete(table).where(eq(table.jobId, jobId));
@@ -170,8 +161,5 @@ export const POST = handleAsyncAuth(async (
     return NextResponse.json({ reply: aiReply });
   }
 
-  return NextResponse.json(
-    { error: 'Either userMessage or conversation must be provided' },
-    { status: 400 }
-  );
+  throw new BadRequestException('Either userMessage or conversation must be provided');
 });

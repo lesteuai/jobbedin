@@ -15,14 +15,14 @@ import {
 import { eq, and } from 'drizzle-orm';
 import { runWorkflow } from '@/app/lib/workflow';
 import { randomUUID } from 'crypto';
-import { handleAsyncAuth } from '@/app/lib/api-handler';
+import { handleAsyncAuth, BadRequestException, NotFoundException } from '@/app/lib/api-handler';
 
 export const POST = handleAsyncAuth(async (request: NextRequest, session, { params }: { params: Promise<{ id: string }> }) => {
 
   const { id: jobId } = await params;
 
   if (!jobId) {
-    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    throw new BadRequestException('id is required');
   }
 
   const job = await db
@@ -31,7 +31,7 @@ export const POST = handleAsyncAuth(async (request: NextRequest, session, { para
     .where(and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)));
 
   if (job.length === 0) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    throw new NotFoundException('Not found');
   }
 
   const processes = await db

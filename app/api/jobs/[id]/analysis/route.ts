@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { company, jobDescriptionMatch, resumeFeedback, coverLetterHistory, messageGenHistory, process as processTable, resumeJob } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { handleAsyncAuth } from '@/app/lib/api-handler';
+import { handleAsyncAuth, BadRequestException, NotFoundException } from '@/app/lib/api-handler';
 
 export const GET = handleAsyncAuth(async (request: NextRequest, session, { params }: { params: Promise<{ id: string }> }) => {
 
   const { id: jobId } = await params;
 
   if (!jobId) {
-    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    throw new BadRequestException('id is required');
   }
 
   const job = await db
@@ -18,7 +18,7 @@ export const GET = handleAsyncAuth(async (request: NextRequest, session, { param
     .where(and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)));
 
   if (job.length === 0) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    throw new NotFoundException('Not found');
   }
 
   const [companyRow, jdMatchRow, feedbackRow, letterRow, messageRow, processes] = await Promise.all([
