@@ -1,292 +1,150 @@
-# Database & Backend Infrastructure
+# Database & Backend
 
-## Purpose
+## Database Schema (Drizzle ORM)
 
-This module manages data persistence and backend processing for JobbedIn. It provides type-safe database access via Drizzle ORM, PostgreSQL schema definitions, and process tracking for the LangGraph AI workflow. All data is scoped to userId for multi-user support. API routes validate session before executing queries and coordinate with the async workflow.
+Located in `app/lib/db/schema.ts`. Uses PostgreSQL with Drizzle ORM for type-safe schema and queries.
 
-## Location
+### Core Tables
 
-- `app/lib/db/index.ts` — Drizzle ORM client initialization
-- `app/lib/db/schema.ts` — PostgreSQL table definitions, enums, and relationships
-- `app/lib/api-handler.ts` — `handleAsync` wrapper for global error handling in API routes
-- `app/api/` — Next.js API routes (emerging layer for backend endpoints)
-- `drizzle.config.ts` — Drizzle Kit migration configuration
-- `.env.example` — PostgreSQL connection credentials template
+**Authentication (better-auth managed):**
+- `user` — User accounts
+- `session` — Session tokens with expiresAt timestamp
+- `account` — OAuth/social login links (not used; email/password only)
+- `verification` — Email verification codes
 
-## Entry Points
+**Data tables (JobbedIn specific):**
+- `resumes` — Resume uploads; userId FK
+  - id (UUID), userId, name, content, createdAt, updatedAt
+- `resume_jobs` — Job descriptions scoped to a resume; userId FK
+  - id (UUID), userId, resumeId, description, createdAt, updatedAt
+- `companies` — Company research results
+  - id (UUID), jobId FK, userId FK, content, createdAt, updatedAt
+- `job_description_match` — JD vs resume matching analysis
+  - id (UUID), jobId FK, userId FK, content, createdAt, updatedAt
+- `resume_feedbacks` — Resume critique
+  - id (UUID), jobId FK, userId FK, content, createdAt, updatedAt
+- `cover_letter_history` — Generated cover letters + chat history
+  - id (UUID), jobId FK, userId FK, conversation (JSON array), createdAt, updatedAt
+- `message_gen_history` — Generated recruiter messages + chat history
+  - id (UUID), jobId FK, userId FK, conversation (JSON array), createdAt, updatedAt
+- `process` — Workflow node status tracking
+  - id (UUID), jobId FK, userId FK, nodeType (enum), status (Processing|Done|Failed), createdAt, updatedAt
 
-- `app/lib/db/index.ts` — Import `db` and `client` to query database from API routes or server functions
-- `app/lib/db/schema.ts` — Import table definitions and enums when defining queries or migrations
-- `drizzle.config.ts` — Configuration for `pnpm db:generate`, `pnpm db:push`, `pnpm db:migrate`
+**Key constraints:**
+- All non-auth tables have userId FK and $onUpdate timestamps
+- process table tracks 5 nodes: Company, JDMatch, ResumeFeedback, Letter, Message
 
-## Architecture / Key Components
+## Database Client (app/lib/db/index.ts)
 
-### Database Connection
-**File:** `app/lib/db/index.ts`
+Initializes PostgreSQL client with environment variable validation.
+
+**Required env vars:**
+- PGUSER, PGPASSWORD, PGHOST, PGPORT, PGDATABASE
+
+If missing, the app crashes on import (fails early rather than at runtime).
 
 ```typescript
-const dbUrl = `postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}`;
-export const client = postgres(dbUrl, { prepare: false });
-export const db = drizzle(client);
+const db = postgres(connectionString);
+export const drizzle = new Drizzle(db, { schema });
 ```
 
-- Postgres client initialized with connection string from environment variables
-- Drizzle ORM wraps the client for type-safe queries
-- Currently commented-out: `import * as schema from './schema'` (will be uncommented when queries are written)
-- Throws if any PG_* environment variable is missing
+## API Session Validation Pattern
 
-### Schema Overview
-**File:** `app/lib/db/schema.ts`
+Every API route must validate session before accessing data:
 
-#### Enums
-- **ProcessStatus**: `Pending`, `Processing`, `Done`, `Failed` — tracks async job execution state
-- **ProcessType**: `Company`, `JDMatch`, `ResumeFeedback`, `Letter`, `Message` — the five analysis/generation tasks in the workflow
-
-#### Tables
-
-**resumes**
-- `id: uuid` (primary key) — Resume identifier
-- `name: text` — User-provided resume name (e.g., "SDE Resume 2025")
-- `content: text` — Full resume markdown/text (extracted from PDF, or plain text)
-- `userId: uuid` (FK to user, cascade delete) — Resume owner
-- `updatedAt: timestamp` (auto-updated on insert/update) — Last modified timestamp
-
-**resume_jobs** (links: one resume to one job description; user-selected pairing)
-- `id: uuid` (primary key)
-- `resumeId: uuid` (FK to resumes, cascade delete) — Which resume is being used
-- `name: text` — User-provided job name (e.g., "Google SDE")
-- `content: text` — Job description text pasted by user
-- `userId: uuid` (FK to user, cascade delete) — Job owner (scopes data)
-- `updatedAt: timestamp` (auto-updated) — Last modified timestamp
-
-**company** (analysis result: company research from ResearchCompany node)
-- `id: uuid` (primary key)
-- `jobId: uuid` (FK to resume_jobs, cascade delete) — Which job this analysis is for
-- `userId: uuid` (FK to user, cascade delete) — Redundant but enables queries by userId alone
-- `content: text` — Company mission, culture, strategic news (generated by Tavily + agent)
-- `updatedAt: timestamp` (auto-updated)
-
-**job_description_match** (analysis result: JD-resume matching from CrossRef node)
-- `id: uuid` (primary key)
-- `jobId: uuid` (FK to resume_jobs, cascade delete)
-- `userId: uuid` (FK to user)
-- `content: text` — 3 actionable suggestions to improve resume match
-- `updatedAt: timestamp`
-
-**resume_feedback** (analysis result: resume critique from ResumeFeedback node)
-- `id: uuid` (primary key)
-- `jobId: uuid` (FK to resume_jobs, cascade delete)
-- `userId: uuid` (FK to user)
-- `content: text` — Impact, bullet quality, skills representation, structure, quick wins feedback
-- `updatedAt: timestamp`
-
-**cover_letter_history** (conversation history from GenerateLetter node)
-- `jobId: uuid` (FK to resume_jobs, cascade delete) — Primary identifier for this conversation
-- `userId: uuid` (FK to user)
-- `conversation: json` — Array of chat messages: [{ role: 'user' | 'ai', text: string }, ...]
-- `updatedAt: timestamp`
-
-**message_gen_history** (conversation history from GenerateMsg node)
-- `jobId: uuid` (FK to resume_jobs, cascade delete)
-- `userId: uuid` (FK to user)
-- `conversation: json` — Array of chat messages for recruiter message generation
-- `updatedAt: timestamp`
-
-**process** (async job tracking; one row per workflow node per job)
-- `id: uuid` (primary key)
-- `jobId: uuid` (FK to resume_jobs, cascade delete) — Which job this process is for
-- `userId: uuid` (FK to user)
-- `processType: ProcessType enum` — Company | JDMatch | ResumeFeedback | Letter | Message
-- `status: ProcessStatus enum` (default: Pending) — Pending -> Processing -> Done (or Failed)
-- `updatedAt: timestamp`
-
-### Relationships
-
-```
-resumes (1)
-  ├── resume_jobs (N) [cascade delete]
-      ├── companies (N) [cascade delete]
-      ├── job_description_match (N) [cascade delete]
-      ├── resume_feedbacks (N) [cascade delete]
-      ├── cover_letter_history (N) [cascade delete]
-      ├── message_gen_history (N) [cascade delete]
-      └── process (N) [cascade delete]
-```
-
-All child tables cascade delete when resume_jobs is deleted. This ensures referential integrity and cleans up orphaned analysis results.
-
-## Data Flow
-
-```
-Frontend (click "Analyze")
-  ↓ POST /api/jobs/[id]/analyze
-API Route (analyze endpoint)
-  ↓
-Validate session + job ownership
-Delete prior analysis results
-Create 5 process records (status=Processing or Pending)
-Fire-and-forget runWorkflow()
-Return 202 Accepted
-  ↓ (async, background)
-LangGraph Workflow (app/lib/workflow.ts)
-  ├─ ResearchCompany node → inserts to company table
-  ├─ CrossRef node → inserts to job_description_match table
-  ├─ ResumeFeedback node → inserts to resume_feedback table
-  ├─ GenerateLetter node (depends on Company + CrossRef) → inserts to cover_letter_history table
-  └─ GenerateMsg node (depends on Company + CrossRef) → inserts to message_gen_history table
-  Each node updates its process record status → Done or Failed
-  ↓ (frontend polls)
-Frontend setInterval every 1 second → GET /api/jobs/[id]/analysis
-  ↓
-Analysis endpoint queries all tables and process records
-Returns: company, jdMatch, feedback, letterConversation, messageConversation, processes array
-Frontend renders results incrementally as they appear
-When all 5 process statuses reach Done or Failed, stop polling
-```
-
-**Actual implementation:**
-1. Frontend stores resumes/jobs in React Context, synced from API on mount
-2. All API endpoints validate session via `auth.api.getSession({ headers })`
-3. All queries filter by userId to enforce data scoping
-4. Async workflow is fire-and-forget; frontend polls for results
-5. Process tracking via `process` table enables real-time progress visibility
-
-## Dependencies
-
-**Internal:**
-- `app/lib/db/schema.ts` — Table and enum definitions, ProcessStatus and ProcessType enums
-- `app/lib/auth/index.ts` — Session validation via better-auth
-- `app/lib/workflow.ts` — LangGraph nodes that write to database
-- Environment variables: `PGUSER`, `PGPASSWORD`, `PGHOST`, `PGPORT`, `PGDATABASE`
-
-**External:**
-- `postgres` 3.4.9 — PostgreSQL client
-- `drizzle-orm` 0.45.2 — Type-safe ORM with insert/update/delete builders
-- `drizzle-kit` 0.31.10 — Schema migration tooling
-- `dotenv` 17.4.2 — Environment variable loading
-- `crypto` (Node.js built-in) — `randomUUID()` for generating IDs
-
-## Consumers
-
-**API routes:**
-- `app/api/resumes/route.ts` — GET/POST resumes (userId-scoped)
-- `app/api/resumes/[id]/route.ts` — DELETE resume (userId-scoped)
-- `app/api/jobs/route.ts` — GET/POST jobs (userId-scoped)
-- `app/api/jobs/[id]/route.ts` — DELETE job (userId-scoped)
-- `app/api/jobs/[id]/analyze/route.ts` — POST trigger workflow (creates process records, calls runWorkflow)
-- `app/api/jobs/[id]/analysis/route.ts` — GET analysis results and process statuses (userId-scoped)
-- `app/api/jobs/[id]/chat/route.ts` — GET/POST chat history (userId-scoped)
-
-**Workflow nodes:**
-- `app/lib/workflow.ts` — All 5 nodes (ResearchCompany, CrossRef, ResumeFeedback, GenerateLetter, GenerateMsg) write results and update process statuses
-
-**Frontend:**
-- `app/lib/app-store.tsx` — Fetches resumes/jobs from API on mount
-- `app/jobs/page.tsx` — Polls `/api/jobs/[id]/analysis` every 1 second during workflow execution
-
-## Patterns & Conventions
-
-**Environment variables:**
-All PostgreSQL connection details are environment-driven. Required variables are:
-- `PGUSER` — PostgreSQL username
-- `PGPASSWORD` — PostgreSQL password
-- `PGHOST` — Hostname (e.g., localhost, AWS RDS endpoint)
-- `PGPORT` — Port (e.g., 5432)
-- `PGDATABASE` — Database name
-
-Missing variables throw an error at runtime (checked in `app/lib/db/index.ts` and `drizzle.config.ts`).
-
-**Primary keys:**
-All tables use `uuid()` primary keys. UUIDs are not auto-generated by Drizzle; callers must provide them using `crypto.randomUUID()` in Node.js API routes.
-
-**API error handling:**
-All API routes use the `handleAsync` wrapper from `app/lib/api-handler.ts` instead of per-route try-catch blocks. It catches any unhandled throw, logs `[METHOD] /path error:`, and returns a 500 response:
 ```typescript
-import { handleAsync } from '@/app/lib/api-handler';
+const session = await auth.api.getSession({ headers: request.headers });
+if (\!session) {
+  return new Response('Unauthorized', { status: 401 });
+}
 
-export const GET = handleAsync(async (request: NextRequest) => {
-  // no try-catch needed; unexpected throws are caught globally
+// All queries must scope to userId
+const data = await db.query.resumes.findMany({
+  where: eq(schema.resumes.userId, session.user.id),
 });
-
-// Dynamic routes pass through the params context automatically
-export const DELETE = handleAsync(async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) => { ... });
 ```
-Intentional error responses (401, 400, 404) are still returned explicitly inside the handler. Only unexpected errors fall through to `handleAsync`.
 
-**userId scoping:**
-Every table except better-auth tables has a `userId` foreign key. All API routes fetch the session userId and filter queries by userId:
+**Critical:** Missing session validation opens route to unauthenticated access. Missing userId scoping in queries causes cross-user data leaks.
+
+## API Error Handling
+
+All API routes use `handleAsync` wrapper from `app/lib/api-handler.ts`:
+
 ```typescript
-where(and(eq(resumeJob.id, jobId), eq(resumeJob.userId, session.user.id)))
-```
-This prevents one user from accessing another user's data.
-
-**Cascade delete:**
-All foreign keys use `onDelete: 'cascade'`, ensuring that deleting a resume deletes all associated jobs, analyses, and process records. This simplifies cleanup and maintains referential integrity.
-
-**JSON columns:**
-`cover_letter_history.conversation` and `message_gen_history.conversation` store conversations as JSON arrays of message objects (not nested). Format:
-```typescript
-[
-  { role: 'user', text: 'Make it shorter' },
-  { role: 'ai', text: 'Here\'s a shorter version...' }
-]
+export const GET = handleAsync(async (request, ctx) => {
+  // Handler code
+  // Unhandled throws caught globally, logged, returned as 500
+  return new Response(JSON.stringify(data), { status: 200 });
+});
 ```
 
-**Timestamp conventions:**
-All non-auth tables have `updatedAt: timestamp('updated_at').$onUpdate()` which auto-updates on insert/update. No `createdAt` field; modification time suffices for audit purposes.
+**Wrapper behavior:**
+- Catches unhandled throws
+- Logs `[METHOD] /path error: ${message}`
+- Returns 500 JSON error response
+- Supports both plain routes and dynamic `[id]` routes
 
-**Process status lifecycle:**
-When analysis is triggered:
-1. Create 5 process records: Company, JDMatch, ResumeFeedback start as Processing; Letter, Message start as Pending
-2. Workflow nodes run in parallel/serial depending on dependencies
-3. Each node updates its status to Done (or Failed)
-4. Frontend polls and displays progress
-5. When all 5 reach Done/Failed, polling stops
+**Intentional error responses** still returned explicitly inside handler (401, 400, 404).
 
-**Analysis result deletion:**
-The analyze endpoint deletes all prior analysis results (company, job_description_match, resume_feedback, cover_letter_history, message_gen_history, process records) before starting new workflow. This ensures stale data is not returned during polling and prevents duplicate results.
+## Migrations
 
-## Gotchas & Non-Obvious Logic
+Located in `drizzle/` directory. Tracked as SQL files.
 
-**Migrations are generated from schema:**
-The schema is defined in code. To push to a real database:
-1. Set .env variables (PG_*)
-2. Run `pnpm db:generate` to create a migration file
-3. Run `pnpm db:push` to apply it to PostgreSQL
-4. Each schema change: run `pnpm db:generate` again (creates a new migration file)
+**Commands:**
+```bash
+pnpm db:generate   # Generate migration from schema changes
+pnpm db:push       # Push schema to PostgreSQL (creates/alters tables)
+pnpm db:migrate    # Run pending migrations
+pnpm test-db       # Validate PostgreSQL connection
+```
 
-**UUID generation is manual:**
-Drizzle does not auto-generate UUIDs. API routes must use `crypto.randomUUID()` when inserting. This is intentional.
+**Schema changes:**
+1. Edit `app/lib/db/schema.ts`
+2. Run `pnpm db:generate` to create migration file
+3. Review generated SQL in `drizzle/`
+4. Run `pnpm db:push` or `pnpm db:migrate` to apply
 
-**Cascade delete is permanent:**
-Deleting a resume cascades to all jobs, analyses, and process records. No soft delete or archive exists. If audit trails become necessary, add a `deletedAt: timestamp('deleted_at')` field and filter in queries.
+## File Handling
 
-**Process table has no error field:**
-If a workflow node fails, its status is set to `Failed` but no error message is stored. The error is only logged to server console. The frontend can display "Failed" but not the reason. Consider adding `errorMessage: text` field to the process table for better debugging.
+Resume upload via POST `/api/resumes`:
+- Validates file type (.pdf, .txt, .md)
+- PDF: extracts text via pdf-parse
+- TXT/MD: reads as UTF-8
+- Returns 400 for unsupported formats
+- Stores name (without extension) + content in database
 
-**All analysis results are replaced:**
-The analyze endpoint deletes prior company/jdMatch/feedback/letterHistory/messageHistory before workflow starts. This ensures no stale data is returned. It also means re-running analysis loses the old results.
+**Gotchas:**
+- pdf-parse fails on encrypted or malformed PDFs
+- Large PDFs may timeout; no chunked processing implemented
+- File naming: duplicate names create separate entries with same name but different UUID
 
-**Polling returns partial results:**
-The analysis endpoint returns null for any result table that is empty. The frontend checks for null and renders "Loading..." or skips that section. This is intentional to show incremental progress.
+## Better-auth Configuration
 
-**Process table is one record per node per job:**
-There are always exactly 5 process records for each job (one per ProcessType). The analyze endpoint creates them fresh each time. Querying processes must filter by jobId and optionally by processType.
+Located in `app/lib/auth/index.ts`:
+- Email/password flow only (no OAuth)
+- Drizzle ORM adapter for session/user storage
+- Uses BETTER_AUTH_SECRET and ORIGIN env vars
 
-**No indexes beyond primary/foreign keys:**
-The schema defines PKs and FKs but no additional indexes on jobId, userId, or other common query columns. Performance should be tested and indexes added as needed.
+**Session management:**
+- Cookies set automatically by better-auth
+- `authClient.signOut()` clears cookies on client
+- Does NOT invalidate database record (expiresAt is source of truth)
+- Expired sessions still present in database
 
-**Fire-and-forget error handling:**
-The analyze endpoint calls `void runWorkflow(...)` without awaiting. If runWorkflow crashes, the HTTP response is already sent (202). Errors are only visible in server logs. A failed process node's status will be marked Failed but the client won't know why.
+## Environment Variables
 
-## Open Questions
+**PostgreSQL:**
+- PGUSER, PGPASSWORD, PGHOST, PGPORT, PGDATABASE
 
-- Should error messages be stored in the process table for frontend display?
-- Should process table track start time and duration for performance monitoring?
-- What's the retention policy for old analyses (purge after 30 days, keep forever)?
-- Should analyze endpoint prevent re-running if workflow is still in progress (check for Processing status)?
-- Should there be a cancel/timeout mechanism for long-running workflows?
-- Should userId be indexed for faster lookups in tables with many rows?
+**better-auth:**
+- BETTER_AUTH_SECRET (generate random string)
+- ORIGIN (production domain)
+- ORIGIN_DEV (http://localhost:3000)
+
+**AI/Workflow:**
+- OPENROUTER_API_KEY (required for LLM nodes)
+- TAVILY_API_KEY (required for company research)
+- REASONING_MODEL (optional; default: meta-llama/llama-3.1-8b-instruct:free)
+- WRITING_MODEL (optional; default: same as above)
+
+No validation at app startup; missing vars crash during module import.
