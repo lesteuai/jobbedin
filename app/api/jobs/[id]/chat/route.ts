@@ -5,7 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
 import { generate_letter_prompt, generate_msg_prompt } from '@/app/lib/system-prompt';
-import { handleAsync, getSessionOrThrow } from '@/app/lib/api-handler';
+import { handleAsyncAuth } from '@/app/lib/api-handler';
 
 type ChatLine = {
   role: 'user' | 'ai';
@@ -19,11 +19,11 @@ const writingLlm = new ChatOpenAI({
   configuration: { baseURL: 'https://openrouter.ai/api/v1' },
 });
 
-export const GET = handleAsync(async (
+export const GET = handleAsyncAuth(async (
   request: NextRequest,
+  session,
   { params }: { params: Promise<{ id: string }> }
 ) => {
-  const session = await getSessionOrThrow(request);
 
   const { id: jobId } = await params;
 
@@ -60,11 +60,11 @@ export const GET = handleAsync(async (
   return NextResponse.json({ conversation: conversation || [] });
 });
 
-export const POST = handleAsync(async (
+export const POST = handleAsyncAuth(async (
   request: NextRequest,
+  session,
   { params }: { params: Promise<{ id: string }> }
 ) => {
-  const session = await getSessionOrThrow(request);
 
   const { id: jobId } = await params;
 

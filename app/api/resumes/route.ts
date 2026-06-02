@@ -4,10 +4,9 @@ import { resume } from '@/app/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import "pdf-parse/worker";
 import { PDFParse } from "pdf-parse";
-import { handleAsync, getSessionOrThrow } from '@/app/lib/api-handler';
+import { handleAsyncAuth } from '@/app/lib/api-handler';
 
-export const GET = handleAsync(async (request: NextRequest) => {
-  const session = await getSessionOrThrow(request);
+export const GET = handleAsyncAuth(async (request: NextRequest, session) => {
 
   const resumes = await db
     .select({
@@ -23,8 +22,7 @@ export const GET = handleAsync(async (request: NextRequest) => {
   return NextResponse.json(resumes);
 });
 
-export const POST = handleAsync(async (request: NextRequest) => {
-  const session = await getSessionOrThrow(request);
+export const POST = handleAsyncAuth(async (request: NextRequest, session) => {
 
   const formData = await request.formData();
   const file = formData.get('file') as File;

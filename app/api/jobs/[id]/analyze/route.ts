@@ -15,10 +15,9 @@ import {
 import { eq, and } from 'drizzle-orm';
 import { runWorkflow } from '@/app/lib/workflow';
 import { randomUUID } from 'crypto';
-import { handleAsync, getSessionOrThrow } from '@/app/lib/api-handler';
+import { handleAsyncAuth } from '@/app/lib/api-handler';
 
-export const POST = handleAsync(async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-  const session = await getSessionOrThrow(request);
+export const POST = handleAsyncAuth(async (request: NextRequest, session, { params }: { params: Promise<{ id: string }> }) => {
 
   const { id: jobId } = await params;
 

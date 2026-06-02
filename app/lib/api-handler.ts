@@ -16,7 +16,7 @@ export async function getSessionOrThrow(request: NextRequest) {
   return session;
 }
 
-export function handleAsync<T extends unknown[]>(
+function withErrorHandling<T extends unknown[]>(
   fn: (request: NextRequest, ...args: T) => Promise<NextResponse>
 ) {
   return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
@@ -32,19 +32,17 @@ export function handleAsync<T extends unknown[]>(
   };
 }
 
+export function handleAsync<T extends unknown[]>(
+  fn: (request: NextRequest, ...args: T) => Promise<NextResponse>
+) {
+  return withErrorHandling(fn);
+}
+
 export function handleAsyncAuth<T extends unknown[]>(
   fn: (request: NextRequest, session: Awaited<ReturnType<typeof getSessionOrThrow>>, ...args: T) => Promise<NextResponse>
 ) {
-  return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
-    try {
-      const session = await getSessionOrThrow(request);
-      return await fn(request, session, ...args);
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        return NextResponse.json({ error: error.message }, { status: 401 });
-      }
-      console.error(`[${request.method}] ${request.nextUrl.pathname} error:`, error);
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-  };
+  return withErrorHandling(async (request: NextRequest, ...args: T) => {
+    const session = await getSessionOrThrow(request);
+    return await fn(request, session, ...args);
+  });
 }

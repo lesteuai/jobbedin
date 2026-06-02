@@ -3,10 +3,9 @@ import { db } from '@/app/lib/db';
 import { resumeJob } from '@/app/lib/db/schema';
 import { eq, and, count } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { handleAsync, getSessionOrThrow } from '@/app/lib/api-handler';
+import { handleAsyncAuth } from '@/app/lib/api-handler';
 
-export const GET = handleAsync(async (request: NextRequest) => {
-  const session = await getSessionOrThrow(request);
+export const GET = handleAsyncAuth(async (request: NextRequest, session) => {
 
   const resumeId = request.nextUrl.searchParams.get('resumeId');
 
@@ -32,8 +31,7 @@ export const GET = handleAsync(async (request: NextRequest) => {
   return NextResponse.json(jobs);
 });
 
-export const POST = handleAsync(async (request: NextRequest) => {
-  const session = await getSessionOrThrow(request);
+export const POST = handleAsyncAuth(async (request: NextRequest, session) => {
 
   const body = await request.json();
   const { resumeId, content } = body;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { resume } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { handleAsync, getSessionOrThrow } from '@/app/lib/api-handler';
+import { handleAsyncAuth } from '@/app/lib/api-handler';
 
 async function getExistingResume(id: string, userId: string) {
   const result = await db
@@ -13,11 +13,11 @@ async function getExistingResume(id: string, userId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export const GET = handleAsync(async (
+export const GET = handleAsyncAuth(async (
   request: NextRequest,
+  session,
   { params }: { params: Promise<{ id: string }> }
 ) => {
-  const session = await getSessionOrThrow(request);
 
   const { id } = await params;
 
@@ -37,11 +37,11 @@ export const GET = handleAsync(async (
   return NextResponse.json(existing);
 });
 
-export const DELETE = handleAsync(async (
+export const DELETE = handleAsyncAuth(async (
   request: NextRequest,
+  session,
   { params }: { params: Promise<{ id: string }> }
 ) => {
-  const session = await getSessionOrThrow(request);
 
   const { id } = await params;
 
