@@ -126,7 +126,7 @@ process {
 3. 'processing' for Letter and Message when they start (depends on Company + CrossRef)
 4. 'done' or 'failed' upon completion
 
-Frontend polls `/api/jobs/[id]/analysis` to read all 5 process statuses.
+Frontend receives updates via EventSource to `/api/jobs/[id]/analysis-stream` (SSE), which polls database every 1s and streams results to client.
 
 ## Execution Model
 
@@ -135,11 +135,17 @@ Frontend polls `/api/jobs/[id]/analysis` to read all 5 process statuses.
 - Returns 202 immediately
 - Workflow executes in background
 
+**Stream-based progress (Server-Sent Events):**
+- `/api/jobs/[id]/analysis-stream` (GET) opens a persistent SSE connection
+- Server-side interval polls database every 1s, streams all results + process statuses
+- Client receives updates reactively via EventSource onmessage handler
+- Stream auto-closes when all 5 processes are terminal (Done or Failed)
+
 **Error handling:**
 - Errors only logged to server console
 - Process status set to Failed on error
 - No retry mechanism
-- Frontend sees Failed status on next poll
+- Frontend sees Failed status on next stream message
 
 **No aggregated error summary:**
 - Each node fails independently

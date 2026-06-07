@@ -6,7 +6,7 @@ An AI-assisted job application tool that researches companies and generates pers
 
 JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) design aesthetic. Users upload resumes, add job descriptions, and the app deploys a 5-node LangGraph workflow to research companies, critique resumes, match JD requirements, and generate personalized cover letters and recruiter messages. The chat interface enables iterative refinement of outputs.
 
-**Data flow:** Login → Upload Resume → Add Job → Analyze (async workflow + polling) → View Results → Chat to Refine
+**Data flow:** Login → Upload Resume → Add Job → Analyze (async workflow + SSE stream) → View Results → Chat to Refine
 
 **Key tech stack:** Next.js 16, React 19, Tailwind CSS v4, TypeScript, PostgreSQL, Drizzle ORM, better-auth, LangGraph, OpenRouter LLMs, Tavily search
 
@@ -16,7 +16,7 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 - **Authentication**: better-auth 1.6.11 with email/password flow; session validation on all API routes
 - **Database**: PostgreSQL + Drizzle ORM; all data scoped to userId; migrations in `drizzle/`
 - **API**: Next.js App Router routes; `handleAsync` wrapper for global error handling; all routes return 401 if session invalid
-- **AI Workflow**: LangGraph StateGraph with 5 parallel/sequential nodes (ResearchCompany, CrossRef, ResumeFeedback → GenerateLetter, GenerateMsg); fire-and-forget execution; results streamed to client via polling
+- **AI Workflow**: LangGraph StateGraph with 5 parallel/sequential nodes (ResearchCompany, CrossRef, ResumeFeedback → GenerateLetter, GenerateMsg); fire-and-forget execution; results and process status streamed to client via SSE (Server-Sent Events)
 
 ## Directory Structure
 

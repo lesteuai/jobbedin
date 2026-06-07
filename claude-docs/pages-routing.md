@@ -21,7 +21,8 @@ API routes (all session-validated, userId-scoped):
 /api/jobs                   → GET (list by resumeId), POST (create)
 /api/jobs/[id]              → GET (single), DELETE
 /api/jobs/[id]/analyze      → POST (trigger workflow, returns 202)
-/api/jobs/[id]/analysis     → GET (workflow results + process status)
+/api/jobs/[id]/analysis     → GET (workflow results + process status, one-shot)
+/api/jobs/[id]/analysis-stream → GET (SSE: streams workflow results + process status every 1s)
 /api/jobs/[id]/chat         → GET (conversation history), POST (send message or clear)
 ```
 
@@ -34,10 +35,11 @@ API routes (all session-validated, userId-scoped):
 5. Add job descriptions (pasted as text); stored in resume_jobs table
 6. Click "Analyze" → POST `/api/jobs/[id]/analyze` → returns 202 immediately
 7. LangGraph workflow executes asynchronously in background
-8. Frontend polls `/api/jobs/[id]/analysis` every 1s to display progress
-9. When all 5 processes complete → UI loads full analysis + generated content
-10. Chat interface for iterative refinement → POST `/api/jobs/[id]/chat` with userMessage
-11. LLM response persisted to database; conversation history stored in conversation column
+8. Frontend opens EventSource to `/api/jobs/[id]/analysis-stream` (SSE)
+9. Server streams workflow results + all 5 process statuses every 1s until all complete
+10. When all 5 processes reach Done or Failed → stream closes, UI loads full analysis + generated content
+11. Chat interface for iterative refinement → POST `/api/jobs/[id]/chat` with userMessage
+12. LLM response persisted to database; conversation history stored in conversation column
 
 ## Page Implementation Details
 
@@ -51,7 +53,9 @@ API routes (all session-validated, userId-scoped):
 - Accepts resumeId from URL via useParams()
 - Calls selectResume(resumeId) on mount
 - Manages job list (add, delete, select)
-- Polling loop after "Analyze" click: setInterval fetches `/api/jobs/[id]/analysis` every 1s
+- SSE stream after "Analyze" click: EventSource connects to `/api/jobs/[id]/analysis-stream`
+- Server pushes workflow results + process statuses every 1s; client updates UI reactively
+- Stream closes when all 5 processes are terminal (Done or Failed)
 - Delegates analysis display to AnalysisReport component
 - Delegates chat logic to useChat hook
 - handleSelect(id) is async, awaits selectJob(id) before switching view (catches errors, keeps current view on failure)
@@ -75,21 +79,22 @@ All routes validate session via `auth.api.getSession({ headers: request.headers 
 
 **Analysis/Workflow routes:**
 - `POST /api/jobs/[id]/analyze` — Trigger LangGraph workflow; checks if already running, creates 5 process records, fire-and-forgets runWorkflow(), returns 202
-- `GET /api/jobs/[id]/analysis` — Get workflow results: company, jdMatch, feedback, letterConversation, messageConversation, array of 5 process statuses (for polling)
+- `GET /api/jobs/[id]/analysis` — Get workflow results: company, jdMatch, feedback, letterConversation, messageConversation, array of 5 process statuses (one-shot snapshot)
+- `GET /api/jobs/[id]/analysis-stream` — SSE stream; polls database every 1s and sends all results + process statuses to client; stream closes when all 5 processes are terminal
 
 **Chat routes:**
 - `GET /api/jobs/[id]/chat?mode=...` — Get conversation history for 'letter' or 'message' mode
 - `POST /api/jobs/[id]/chat` — Accept { mode, userMessage, conversation? }; if userMessage: invoke ChatOpenAI with system prompt + history, persist to DB, return { reply }; if conversation: clear and set new history
 
-## Frontend Polling Pattern
+## Frontend Streaming Pattern (Server-Sent Events)
 
 When user clicks "Analyze":
 1. POST `/api/jobs/[id]/analyze` → 202 accepted
 2. Set isAnalyzing=true
-3. startPolling(jobId) spawns setInterval every 1s
-4. Fetch `/api/jobs/[id]/analysis` → returns all 5 process statuses + generated content
-5. Display progress (e.g., "Company: Processing", "JDMatch: Done")
-6. Loop terminates when all 5 processes reach Done or Failed
-7. UI loads complete analysis from database
+3. Open EventSource to `/api/jobs/[id]/analysis-stream`
+4. Server streams JSON messages every 1s with all 5 process statuses + generated content
+5. Client parses each message and updates component state reactively
+6. When all 5 processes reach Done or Failed, server closes stream
+7. Client detects stream close, sets isAnalyzing=false, displays complete analysis
 
-This pattern allows real-time visibility into asynchronous workflow progress without blocking the user.
+This pattern (SSE vs. client polling) reduces client overhead, consolidates logic on server (where data lives), and uses native browser EventSource API.

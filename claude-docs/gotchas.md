@@ -86,6 +86,24 @@ Resume files stored by name (without extension). Duplicate names create separate
 
 **Failure mode:** App crashes on import if required vars missing
 
+## Server-Sent Events (SSE) Streaming
+
+**Analysis updates via SSE (`/api/jobs/[id]/analysis-stream`):**
+- Server-side interval polls database every 1s
+- EventSource stays open until all 5 processes are terminal
+- Client must clean up EventSource on component unmount or when stream closes
+
+**Connection management:**
+- Store EventSource ref in useRef (not state) to avoid re-creating on render
+- Always call `es.close()` before opening a new stream (prevent multiple active streams)
+- Call `es.close()` in cleanup effect to prevent memory leaks
+- Stream auto-closes when controller.close() is called on server
+
+**Error handling:**
+- onerror handler fires if connection drops or server errors
+- Transient JSON parse errors ignored (malformed messages skipped)
+- Treat all stream errors as terminal (stop trying, set isAnalyzing=false)
+
 ## LangGraph Workflow Issues
 
 ### Missing API Keys
@@ -93,7 +111,7 @@ Resume files stored by name (without extension). Duplicate names create separate
 **OPENROUTER_API_KEY missing:** All LLM nodes fail silently
 - Process status set to Failed
 - Error only logged to server console
-- Frontend sees Failed status on next poll
+- Frontend sees Failed status on next stream message
 
 **TAVILY_API_KEY missing:** ResearchCompany node fails
 - Same silent failure pattern
@@ -176,4 +194,4 @@ Example:
 - useChat hook moved to `app/lib/hooks/` alongside other app-level hooks
 - Resume lazy-loading implemented: selectResume() fetches content only on first selection
 - Job lazy-loading implemented: selectJob() fetches content only on first selection
-- Analysis polling refactored: frontend polls `/api/jobs/[id]/analysis` every 1s during workflow execution
+- Analysis streaming refactored: EventSource replaces client polling; server streams via `/api/jobs/[id]/analysis-stream` SSE endpoint
