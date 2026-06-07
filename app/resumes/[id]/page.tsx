@@ -133,22 +133,41 @@ export default function ResumesJobsPage() {
     }
   };
 
+  const handleBackToResumes = () => {
+    selectJob(null);
+    router.push('/resumes')
+  }
+
+  const handleOKAddJob = async () => {
+    const id = await addJob(draft.trim());
+    selectJob(id);
+    setDraft('');
+    setView('view');
+  }
+
+  const handleDeleteJob = async () => {
+    if (pendingDelete) await deleteJob(pendingDelete);
+    setPendingDelete(null);
+  }
+  
+  const handleAddJob = async () => {
+    setView('add');
+    setDraft('');
+    selectJob(null);
+  }
+
   return ( session ?
     <AppFrame>
       <Sidebar
         title="Jobs"
         addLabel="+ Add Job"
-        onAdd={() => {
-          setView('add');
-          setDraft('');
-          selectJob(null);
-        }}
+        onAdd={handleAddJob}
         items={jobs}
         selectedId={selectedJobId}
         onSelect={handleSelect}
         onDelete={(id) => setPendingDelete(id)}
         header={
-          <YmButton onClick={() => router.push('/resumes')}>← Back to Resumes</YmButton>
+          <YmButton onClick={handleBackToResumes}>← Back to Resumes</YmButton>
         }
       />
 
@@ -181,12 +200,7 @@ export default function ResumesJobsPage() {
                   <YmButton
                     variant="primary"
                     disabled={!draft.trim()}
-                    onClick={async () => {
-                      const id = await addJob(draft.trim());
-                      await selectJob(id);
-                      setDraft('');
-                      setView('view');
-                    }}
+                    onClick={handleOKAddJob}
                   >
                     OK
                   </YmButton>
@@ -232,10 +246,7 @@ export default function ResumesJobsPage() {
       <YmModal
         open={pendingDelete !== null}
         title="Confirm delete"
-        onOk={() => {
-          if (pendingDelete) deleteJob(pendingDelete);
-          setPendingDelete(null);
-        }}
+        onOk={handleDeleteJob}
         onCancel={() => setPendingDelete(null)}
       >
         Are you sure you want to delete <b>{pendingName}</b>?

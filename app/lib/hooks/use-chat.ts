@@ -6,7 +6,7 @@ export type ChatLine = { role: 'user' | 'ai'; text: string };
 
 export function useChat(selectedJobId: string | null | undefined, tab: string) {
   const { showError } = useAppStore();
-  const [mode, setMode] = useState<Mode>('letter');
+  const [mode, setMode] = useState<Mode>('message');
   const [chats, setChats] = useState<Record<Mode, ChatLine[]>>({ letter: [], message: [] });
   const [chatDraft, setChatDraft] = useState('');
   const [chatsLoaded, setChatsLoaded] = useState(false);

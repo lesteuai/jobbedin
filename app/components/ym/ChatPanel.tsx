@@ -75,11 +75,11 @@ export function ChatPanel({
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
         <span style={{ fontWeight: 'bold' }}>Mode:</span>
-        <YmButton variant={mode === 'letter' ? 'primary' : 'default'} onClick={() => setMode('letter')}>
-          Cover Letter
-        </YmButton>
         <YmButton variant={mode === 'message' ? 'primary' : 'default'} onClick={() => setMode('message')}>
           Message
+        </YmButton>
+        <YmButton variant={mode === 'letter' ? 'primary' : 'default'} onClick={() => setMode('letter')}>
+          Cover Letter
         </YmButton>
         <span style={{ color: '#666', marginLeft: 8 }}>
           Chatting with <b style={{ color: 'oklch(0.4 0.2 250)' }}>JobbedIn-AI</b>
@@ -102,7 +102,7 @@ export function ChatPanel({
           value={chatDraft}
           onChange={(e) => setChatDraft(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            if (e.key === 'Enter') {
               e.preventDefault();
               handleSend();
             }
