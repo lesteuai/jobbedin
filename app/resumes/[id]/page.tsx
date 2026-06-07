@@ -32,7 +32,7 @@ export default function ResumesJobsPage() {
   } | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [processStatuses, setProcessStatuses] = useState<Array<{ processType: string; status: string }>>([]);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const esRef = useRef<EventSource | null>(null);
   const [tab, setTab] = useState<Tab>('Company');
   const chat = useChat(selectedJobId, tab);
 
@@ -74,36 +74,37 @@ export default function ResumesJobsPage() {
     setView('view');
   };
 
-  const stopPolling = () => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  const stopStream = () => {
+    if (esRef.current) { esRef.current.close(); esRef.current = null; }
   };
 
-  const startPolling = (jobId: string) => {
-    stopPolling();
-    pollRef.current = setInterval(async () => {
+  const startStream = (jobId: string) => {
+    stopStream();
+    const es = new EventSource(`/api/jobs/${jobId}/analysis-stream`);
+    esRef.current = es;
+    es.onmessage = (e) => {
       try {
-        const res = await fetch(`/api/jobs/${jobId}/analysis`);
-        if (!res.ok) return;
-        const data = await res.json();
+        const data = JSON.parse(e.data);
         setAnalysisData({ company: data.company, jdMatch: data.jdMatch, feedback: data.feedback });
         setProcessStatuses(data.processes ?? []);
         if (data.letterConversation) chat.setChats((p) => ({ ...p, letter: data.letterConversation }));
         if (data.messageConversation) chat.setChats((p) => ({ ...p, message: data.messageConversation }));
         const procs: Array<{ status: string }> = data.processes ?? [];
         const allDone = procs.length === 5 && procs.every((p) => p.status === ProcessStatus.Done || p.status === ProcessStatus.Failed);
-        if (allDone) { stopPolling(); setIsAnalyzing(false); }
+        if (allDone) { stopStream(); setIsAnalyzing(false); }
       } catch { /* ignore transient errors */ }
-    }, 1000);
+    };
+    es.onerror = () => { stopStream(); setIsAnalyzing(false); };
   };
 
   useEffect(() => {
-    stopPolling();
+    stopStream();
     setAnalysisData(null);
     setProcessStatuses([]);
     setIsAnalyzing(false);
   }, [selectedJobId]);
 
-  useEffect(() => stopPolling(), []);
+  useEffect(() => stopStream, []);
 
   const handleAnalyze = async () => {
     if (!selectedJobId) return;
@@ -126,7 +127,7 @@ export default function ResumesJobsPage() {
       } else {
         setView('report');
         setTab('Company');
-        startPolling(selectedJobId);
+        startStream(selectedJobId);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to analyze job.';
