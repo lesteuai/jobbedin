@@ -11,7 +11,9 @@
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "test-db": "tsx --inspect --env-file=.env app/lib/db/index.ts"
+    "test-db": "tsx --inspect --env-file=.env app/lib/db/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@langchain/community": "^1.1.28",
