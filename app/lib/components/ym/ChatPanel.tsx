@@ -2,6 +2,7 @@
 
 import type { RefObject } from 'react';
 import { YmButton } from './YmButton';
+import { ProcessStatus, ProcessType } from '@/app/lib/db/schema';
 import type { Mode, ChatLine } from '@/app/lib/hooks/use-chat';
 
 const PLACEHOLDER: Record<Mode, string> = {
@@ -34,18 +35,18 @@ export function ChatPanel({
   handleSend, handleClear,
   getProcessStatus,
 }: Props) {
-  const modeProcessType = mode === 'letter' ? 'letter' : 'message';
+  const modeProcessType = mode === ProcessType.Letter ? ProcessType.Letter : ProcessType.Message;
   const modeStatus = getProcessStatus(modeProcessType);
 
   const renderMessages = () => {
-    if (modeStatus === 'pending' || modeStatus === 'processing') {
+    if (modeStatus === ProcessStatus.Pending || modeStatus === ProcessStatus.Processing) {
       return (
         <div style={{ color: '#888', fontStyle: 'italic' }}>
-          {`Generating your ${mode === 'letter' ? 'cover letter' : 'message'}...`}
+          {`Generating your ${mode === ProcessType.Letter ? 'cover letter' : 'message'}...`}
         </div>
       );
     }
-    if (modeStatus === 'failed') {
+    if (modeStatus === ProcessStatus.Failed) {
       return <div style={{ color: '#c00', fontStyle: 'italic' }}>Generation failed. Please re-analyze.</div>;
     }
     if (lines.length === 0 && !isAiTyping) {
@@ -75,10 +76,10 @@ export function ChatPanel({
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
         <span style={{ fontWeight: 'bold' }}>Mode:</span>
-        <YmButton variant={mode === 'message' ? 'primary' : 'default'} onClick={() => setMode('message')}>
+        <YmButton variant={mode === ProcessType.Message ? 'primary' : 'default'} onClick={() => setMode(ProcessType.Message)}>
           Message
         </YmButton>
-        <YmButton variant={mode === 'letter' ? 'primary' : 'default'} onClick={() => setMode('letter')}>
+        <YmButton variant={mode === ProcessType.Letter ? 'primary' : 'default'} onClick={() => setMode(ProcessType.Letter)}>
           Cover Letter
         </YmButton>
         <span style={{ color: '#666', marginLeft: 8 }}>

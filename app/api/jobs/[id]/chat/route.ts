@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
-import { coverLetterHistory, messageGenHistory, resumeJob, company, jobDescriptionMatch, resume } from '@/app/lib/db/schema';
+import { coverLetterHistory, messageGenHistory, resumeJob, company, jobDescriptionMatch, resume, ProcessType } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
@@ -11,6 +11,8 @@ type ChatLine = {
   role: 'user' | 'ai';
   text: string;
 };
+
+type ChatMode = typeof ProcessType.Letter | typeof ProcessType.Message;
 
 const writingLlm = new ChatOpenAI({
   modelName: process.env.WRITING_MODEL ?? 'meta-llama/llama-3.1-8b-instruct',
@@ -31,9 +33,9 @@ export const GET = handleAsyncAuth(async (
     throw new BadRequestException('id is required');
   }
 
-  const mode = request.nextUrl.searchParams.get('mode') as 'letter' | 'message' | null;
+  const mode = request.nextUrl.searchParams.get('mode') as ChatMode | null;
 
-  if (!mode || !['letter', 'message'].includes(mode)) {
+  if (!mode || ![ProcessType.Letter, ProcessType.Message].includes(mode)) {
     throw new BadRequestException('Invalid mode parameter. Must be "letter" or "message"');
   }
 
@@ -46,7 +48,7 @@ export const GET = handleAsyncAuth(async (
     throw new NotFoundException('Not found');
   }
 
-  const table = mode === 'letter' ? coverLetterHistory : messageGenHistory;
+  const table = mode === ProcessType.Letter ? coverLetterHistory : messageGenHistory;
   const result = await db.select().from(table).where(eq(table.jobId, jobId));
 
   if (result.length === 0) {
@@ -71,12 +73,12 @@ export const POST = handleAsyncAuth(async (
 
   const body = await request.json();
   const { mode, userMessage, conversation } = body as {
-    mode: 'letter' | 'message';
+    mode: ChatMode;
     userMessage?: string;
     conversation?: ChatLine[];
   };
 
-  if (!mode || !['letter', 'message'].includes(mode)) {
+  if (!mode || ![ProcessType.Letter, ProcessType.Message].includes(mode)) {
     throw new BadRequestException('Invalid mode. Must be "letter" or "message"');
   }
 
@@ -89,7 +91,7 @@ export const POST = handleAsyncAuth(async (
     throw new NotFoundException('Not found');
   }
 
-  const table = mode === 'letter' ? coverLetterHistory : messageGenHistory;
+  const table = mode === ProcessType.Letter ? coverLetterHistory : messageGenHistory;
 
   // Legacy path: clear conversation
   if (conversation !== undefined && userMessage === undefined) {
@@ -113,7 +115,7 @@ export const POST = handleAsyncAuth(async (
       line.role === 'user' ? new HumanMessage(line.text) : new AIMessage(line.text)
     );
 
-    const systemPrompt = mode === 'letter' ? generate_letter_prompt : generate_msg_prompt;
+    const systemPrompt = mode === ProcessType.Letter ? generate_letter_prompt : generate_msg_prompt;
 
     const [companyRows, jdMatchRows, resumeRows] = await Promise.all([
       db.select().from(company).where(eq(company.jobId, jobId)),

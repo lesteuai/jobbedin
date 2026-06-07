@@ -36,7 +36,7 @@ export const POST = handleAsyncAuth(async (request: NextRequest, session, { para
     job.processes.length === 5 &&
     job.processes.every((p) => p.status === ProcessStatus.Done)
   ) {
-    return NextResponse.json({ status: 'done' });
+    return NextResponse.json({ status: ProcessStatus.Done });
   }
 
   const isInProgress = job.processes.some(

@@ -4,7 +4,7 @@ import { YmButton } from '@/app/lib/components/ym/YmButton';
 import { MarkdownPanel } from '@/app/lib/components/ym/MarkdownPanel';
 import { ChatPanel } from '@/app/lib/components/ym/ChatPanel';
 import type { useChat } from '@/app/lib/hooks/use-chat';
-import { ProcessStatus } from '@/app/lib/db/schema';
+import { ProcessStatus, ProcessType } from '@/app/lib/db/schema';
 
 export const TABS = ['Company', 'JDMatch', 'Feedback', 'Generate'] as const;
 export type Tab = (typeof TABS)[number];
@@ -27,15 +27,15 @@ type Props = {
 
 export function AnalysisReport({ selectedName, tab, setTab, analysisData, getProcessStatus, onBack, chat }: Props) {
   const tabConfig: Record<string, { processType: string; content: string | null | undefined }> = {
-    Company: { processType: 'company', content: analysisData?.company },
-    JDMatch: { processType: 'jdmatch', content: analysisData?.jdMatch },
-    Feedback: { processType: 'feedback', content: analysisData?.feedback },
+    Company: { processType: ProcessType.Company, content: analysisData?.company },
+    JDMatch: { processType: ProcessType.JDMatch, content: analysisData?.jdMatch },
+    Feedback: { processType: ProcessType.ResumeFeedback, content: analysisData?.feedback },
   };
 
   const renderTabContent = () => {
     if (tab === 'Generate') {
-      const letterStatus = getProcessStatus('letter');
-      const messageStatus = getProcessStatus('message');
+      const letterStatus = getProcessStatus(ProcessType.Letter);
+      const messageStatus = getProcessStatus(ProcessType.Message);
       if (!letterStatus && !messageStatus) {
         return <div style={{ color: '#666', fontStyle: 'italic' }}>Generation failed for this section.</div>;
       }

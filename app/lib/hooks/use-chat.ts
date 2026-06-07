@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '@/app/lib/app-store';
+import { ProcessType } from '@/app/lib/db/schema';
 
-export type Mode = 'letter' | 'message';
+export type Mode = typeof ProcessType.Letter | typeof ProcessType.Message;
 export type ChatLine = { role: 'user' | 'ai'; text: string };
 
 export function useChat(selectedJobId: string | null | undefined, tab: string) {
   const { showError } = useAppStore();
-  const [mode, setMode] = useState<Mode>('message');
-  const [chats, setChats] = useState<Record<Mode, ChatLine[]>>({ letter: [], message: [] });
+  const [mode, setMode] = useState<Mode>(ProcessType.Message);
+  const [chats, setChats] = useState<Record<Mode, ChatLine[]>>({ [ProcessType.Letter]: [], [ProcessType.Message]: [] });
   const [chatDraft, setChatDraft] = useState('');
   const [chatsLoaded, setChatsLoaded] = useState(false);
   const [isSendingChat, setIsSendingChat] = useState(false);
@@ -21,8 +22,8 @@ export function useChat(selectedJobId: string | null | undefined, tab: string) {
     const loadChats = async () => {
       try {
         const [letterRes, messageRes] = await Promise.all([
-          fetch(`/api/jobs/${selectedJobId}/chat?mode=letter`),
-          fetch(`/api/jobs/${selectedJobId}/chat?mode=message`),
+          fetch(`/api/jobs/${selectedJobId}/chat?mode=${ProcessType.Letter}`),
+          fetch(`/api/jobs/${selectedJobId}/chat?mode=${ProcessType.Message}`),
         ]);
 
         if (!letterRes.ok || !messageRes.ok) throw new Error('Failed to load chat history');
@@ -31,8 +32,8 @@ export function useChat(selectedJobId: string | null | undefined, tab: string) {
         const messageData = await messageRes.json();
 
         setChats({
-          letter: letterData.conversation || [],
-          message: messageData.conversation || [],
+          [ProcessType.Letter]: letterData.conversation || [],
+          [ProcessType.Message]: messageData.conversation || [],
         });
         setChatsLoaded(true);
       } catch (err) {

@@ -11,6 +11,7 @@ import { useAppStore, apiErrorMessage } from '@/app/lib/app-store';
 import { useSession } from '@/app/lib/auth/client';
 import { useChat } from '@/app/lib/hooks/use-chat';
 import { AnalysisReport } from '@/app/lib/components/AnalysisReport';
+import { ProcessStatus } from '@/app/lib/db/schema';
 import type { Tab } from '@/app/lib/components/AnalysisReport';
 
 type View = 'idle' | 'view' | 'add' | 'report';
@@ -89,7 +90,7 @@ export default function ResumesJobsPage() {
         if (data.letterConversation) chat.setChats((p) => ({ ...p, letter: data.letterConversation }));
         if (data.messageConversation) chat.setChats((p) => ({ ...p, message: data.messageConversation }));
         const procs: Array<{ status: string }> = data.processes ?? [];
-        const allDone = procs.length === 5 && procs.every((p) => p.status === 'done' || p.status === 'failed');
+        const allDone = procs.length === 5 && procs.every((p) => p.status === ProcessStatus.Done || p.status === ProcessStatus.Failed);
         if (allDone) { stopPolling(); setIsAnalyzing(false); }
       } catch { /* ignore transient errors */ }
     }, 1000);
@@ -111,7 +112,7 @@ export default function ResumesJobsPage() {
       const res = await fetch(`/api/jobs/${selectedJobId}/analyze`, { method: 'POST' });
       if (!res.ok) throw new Error('Analyze request failed');
       const data = await res.json();
-      if (data.status === 'done') {
+      if (data.status === ProcessStatus.Done) {
         const analysisRes = await fetch(`/api/jobs/${selectedJobId}/analysis`);
         if (!analysisRes.ok) throw new Error('Failed to fetch analysis');
         const analysis = await analysisRes.json();
