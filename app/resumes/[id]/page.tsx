@@ -2,16 +2,16 @@
 
 import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
-import { AppFrame } from '@/app/components/ym/AppFrame';
-import { Sidebar } from '@/app/components/ym/Sidebar';
-import { YmModal } from '@/app/components/ym/YmModal';
-import { YmButton } from '@/app/components/ym/YmButton';
-import { MarkdownPanel } from '@/app/components/ym/MarkdownPanel';
+import { AppFrame } from '@/app/lib/components/ym/AppFrame';
+import { Sidebar } from '@/app/lib/components/ym/Sidebar';
+import { YmModal } from '@/app/lib/components/ym/YmModal';
+import { YmButton } from '@/app/lib/components/ym/YmButton';
+import { MarkdownPanel } from '@/app/lib/components/ym/MarkdownPanel';
 import { useAppStore, apiErrorMessage } from '@/app/lib/app-store';
 import { useSession } from '@/app/lib/auth/client';
 import { useChat } from '@/app/lib/hooks/use-chat';
-import { AnalysisReport } from '@/app/components/AnalysisReport';
-import type { Tab } from '@/app/components/AnalysisReport';
+import { AnalysisReport } from '@/app/lib/components/AnalysisReport';
+import type { Tab } from '@/app/lib/components/AnalysisReport';
 
 type View = 'idle' | 'view' | 'add' | 'report';
 

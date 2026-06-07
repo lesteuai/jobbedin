@@ -1,8 +1,8 @@
 'use client';
 
-import { YmButton } from '@/app/components/ym/YmButton';
-import { MarkdownPanel } from '@/app/components/ym/MarkdownPanel';
-import { ChatPanel } from '@/app/components/ym/ChatPanel';
+import { YmButton } from '@/app/lib/components/ym/YmButton';
+import { MarkdownPanel } from '@/app/lib/components/ym/MarkdownPanel';
+import { ChatPanel } from '@/app/lib/components/ym/ChatPanel';
 import type { useChat } from '@/app/lib/hooks/use-chat';
 import { ProcessStatus } from '@/app/lib/db/schema';
 
