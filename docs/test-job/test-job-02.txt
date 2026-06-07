@@ -1,0 +1,30 @@
+The Opportunity
+
+Most junior roles involve fixing bugs in legacy systems. This isn't one of them.
+
+At Zelody, we are rebuilding financial infrastructure from the ground up using an AI-first approach. We are looking for a hungry, "AI-native" Software Engineer who is obsessed with the potential of LLMs and autonomous agents.
+
+You will work directly with our CTO and Principal Architect to turn experimental AI concepts into production-grade financial tools. You’ll build and ship AI-driven workflows that connect APIs, transform data, and automate real financial operations.
+
+The Role
+
+This is a learn as you go position where your curiosity, work ethic, and drive is as important as your experience and current skillset. You will:
+
+Prototype: Rapidly build "proof of concept" features using AI frameworks
+Test and improve the platform: Work alongside senior mentors to learn how to make AI reliable, secure, and compliant in a regulated banking environment.
+Ship Production Code: Contribute to our core TypeScript/Node.js stack, ensuring our AI agents play nice with our broader infrastructure.
+
+What You Bring (The "AI Mindset")
+
+1–3 years of professional software engineering experience (Fintech experience is a "nice to have," but your ability to build is what matters).
+A portfolio of "AI Experiments": Whether it’s a side project, a GitHub repo, or a complex automation you built for fun—we want to see 
+Build & Iterate: Develop and refine agentic workflows that handle real-world financial what you’ve tried.
+Understanding of LLMs: You understand the basics of how LLMs work (tokens, context windows, temperature, and RAG).
+The "Zelody" Pace: You thrive in a startup environment where things move fast and your work has a direct impact on the company’s success.
+
+Technical Stack & Requirements
+
+Languages: Experience with TypeScript/Node.js 
+Infrastructure: Some experience with cloud systems like AWS, event-driven architectures.
+Early Experience with vector databases (Pinecone, Weaviate, etc.).
+Examples: You’ve built something that uses an LLM to "do" something (execute a tool or call an API), not just "say" something.

@@ -1,0 +1,38 @@
+Ester Health is building an at-home device that brings clinic-grade skin imaging into the bathroom. A mirror captures a clean, repeatable scan. An app turns it into a skin score the user actually trusts. The flagship metric — Ester Age — is the first of a roadmap of skin metrics the product will surface over time. 
+
+
+The company is venture-backed by a healthcare technology studio founded by the team behind GoodRx — a group with a track record of building and scaling category-defining consumer health products.
+
+
+About the role
+
+The mirror captures the image. The app is where the user actually lives — subscription, history, progress, the moment of 'oh, that's working' — and the services behind it are what turn a scan into something the user trusts. The API, the data path from device to result, the systems that hold up on a Tuesday morning when someone opens the app for the third time that week. We need the engineer who can hold all of that in their head and ship it.
+
+
+You'll own the product end-to-end across the stack: mobile app, backend services, and the seams in between. Core flows, polish, performance, the connection to the device, the quality bar we hit on launch day. You'll work with a small senior team where product, design, and engineering live close together and the founder is still in the codebase.
+
+
+The Job
+
+    Build and ship across the stack — mobile flows, the services behind them, the glue that holds it together.
+    Own UI polish, performance, reliability, and the edge cases nobody else is going to catch.
+    Integrate with the device, the backend, and the ML pipeline as features come together across the stack.
+    Turn rough product goals into shipped iterations, with the scope calls and tradeoffs that come with the territory.
+    Hold the line on launch readiness: instrumentation, testing, stability.
+
+
+Required Background: 
+
+    A full stack engineer with real mobile range. The unicorn here is someone who has shipped serious mobile and serious backend, and can move between them without losing the thread.
+    Strong product taste and a bias to ship.
+    Experience taking iOS (and ideally Android) features from sketch to App Store, plus comfort building and operating the services they call.
+    Comfort with the chaos of early-stage — you don't need a PM to write your tickets.
+    Solid fundamentals in debugging, performance, and product-quality craft.
+    AI-native workflow for prototyping, debugging, and research, with the judgment to verify the output.
+
+
+Preferred Background:
+
+    Built a connected-device experience over Bluetooth or real-time capture.
+    Shipped onboarding, retention, or subscription product surfaces and watched the metrics move.
+    Background in consumer health, wellness, or beauty.

@@ -1,0 +1,39 @@
+About Prophetic:
+
+Real estate development is a multi-billion-dollar industry that has run on fragmented data, manual processes, and gut instinct for decades. Prophetic is changing that. We're building the AI-native platform that enables homebuilders, developers, and investors to find, analyze, and act on land opportunities from a single system — powered by proprietary technologies that process billions of data points across all 50 states. We are the market leader in our space, and our customers don't just use the product — they love it. We're not making teams more efficient. We're changing how they operate.
+
+
+Prophetic is scaling fast — demand is outpacing our ability to hire, and we're just getting started. This is a once-in-a-lifetime team: sharp, low ego, deeply collaborative, and obsessed with building the best product in the industry. Come disrupt an industry with us.
+
+
+About the Role:
+
+The engineering team is scaling to meet demand that is outpacing our ability to ship. You'll build across our core platform products that homebuilders and developers use to find, analyze, and act on land opportunities across all 50 states. You'll report to our CTO, working alongside a team of senior engineers shipping features every two to three weeks.
+
+You're expected to use AI tooling daily as a standard part of the engineering workflow. We run automated testing across the platform. We have multiple openings across the platform. You'll own features end-to-end, from database to UI, and ship code that supports customers making million-dollar land acquisition decisions.
+
+
+What You'll Do:
+
+    Build and ship full-stack features across our core platform using modern backend and frontend frameworks.
+    Design and optimize database schemas for geospatial queries across large datasets.
+    Write production-quality code that deploys through our CI/CD pipeline.
+    Collaborate with product, design, and account management to translate customer needs into shipped features.
+    Use AI tooling as part of your daily development workflow — our engineers approach writing code.
+    AI-first.Participate in code reviews, architecture discussions, and on-call rotation.
+
+
+What You Need: 
+
+    5+ years of professional software engineering experience with Python and TypeScript/React, or similar.
+    Strong experience with relational databases and RESTful API design.
+    Comfort working across the full stack — you can build a backend endpoint and the frontend component that consumes it.
+    Experience shipping features in a production environment with CI/CD pipelines.
+    Comfort with AI development tooling.
+    Strong sense of product ownership. Familiarity with a fast-paced startup environment.
+
+
+Nice to Have:
+
+    Experience with geospatial data (parcel data, map layers, or simiar).
+    Experience with major cloud platforms.Background in proptech, real estate, or construction technology.
