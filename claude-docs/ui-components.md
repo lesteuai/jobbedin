@@ -4,7 +4,7 @@
 
 JobbedIn uses an intentionally retro 2000s Windows XP aesthetic. This is a deliberate design choice, not a limitation. All components follow the `ym-` class naming convention.
 
-All primitives are located in `app/components/ym/`.
+All primitives are located in `app/lib/components/ym/`.
 
 ## Core Primitives
 
@@ -58,14 +58,18 @@ Renders markdown content with proper styling for analysis display.
 
 Uses OKLch color space for precise control. CSS variables defined in `:root`.
 
-**Color palette:**
-- Primary: `var(--color-primary)`
-- Background: `var(--color-bg)`
-- Text: `var(--color-text)`
-- Borders: `var(--color-border)`
-- Accent colors for hover, active, error states
+**Yahoo Messenger color palette (from `app/globals.css`):**
+- `--ym-window` — Main background color
+- `--ym-panel` — Panel background
+- `--ym-inset` — Inset/sunken areas
+- `--ym-titlebar-from/to` — Purple gradient for title bars
+- `--ym-accent` — Primary purple accent
+- `--ym-accent-2` — Secondary orange accent
+- `--ym-text` — Text color
+- `--ym-muted` — Muted/disabled text
+- `--ym-danger` — Error/danger red
 
-All colors are defined in `app/globals.css`.
+All colors defined as CSS variables in `app/globals.css` for consistent reuse.
 
 ## Styling Approach
 
@@ -85,7 +89,7 @@ See `app/globals.css` for:
 
 ## Component Composition
 
-Page-level composite components (e.g., `AnalysisReport.tsx`) live in `app/components/`.
-UI primitives live in `app/components/ym/`.
+Page-level composite components (e.g., `AnalysisReport.tsx`) live in `app/lib/components/`.
+UI primitives live in `app/lib/components/ym/`.
 
 This separation keeps low-level primitives focused and page-level composition concerns isolated.

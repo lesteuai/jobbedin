@@ -106,25 +106,27 @@ const response = await llm.invoke([
 
 ## Process Status Tracking
 
-Each node updates its own process record (5 total: Company, JDMatch, ResumeFeedback, Letter, Message):
+Each node updates its own process record (5 total):
 
 ```typescript
 process {
   id: UUID,
   jobId: UUID,
   userId: UUID,
-  nodeType: 'Company' | 'JDMatch' | 'ResumeFeedback' | 'Letter' | 'Message',
-  status: 'Processing' | 'Done' | 'Failed',
+  processType: 'company' | 'jdmatch' | 'feedback' | 'letter' | 'message',
+  status: 'pending' | 'processing' | 'done' | 'failed',  // from ProcessStatus enum
   createdAt: Date,
   updatedAt: Date
 }
 ```
 
-**Node updates its status:**
-1. 'Processing' when workflow starts (set by analyze endpoint)
-2. 'Done' or 'Failed' upon completion
+**Node status lifecycle:**
+1. 'processing' for first 3 nodes (Company, CrossRef, ResumeFeedback) when workflow starts (set by analyze endpoint)
+2. 'pending' for Letter and Message nodes initially
+3. 'processing' for Letter and Message when they start (depends on Company + CrossRef)
+4. 'done' or 'failed' upon completion
 
-Frontend polls `/api/jobs/[id]/analysis` to read all 5 statuses.
+Frontend polls `/api/jobs/[id]/analysis` to read all 5 process statuses.
 
 ## Execution Model
 

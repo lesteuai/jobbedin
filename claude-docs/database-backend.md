@@ -14,25 +14,27 @@ Located in `app/lib/db/schema.ts`. Uses PostgreSQL with Drizzle ORM for type-saf
 
 **Data tables (JobbedIn specific):**
 - `resumes` — Resume uploads; userId FK
-  - id (UUID), userId, name, content, createdAt, updatedAt
+  - id (UUID PK), userId, name, content, createdAt, updatedAt
 - `resume_jobs` — Job descriptions scoped to a resume; userId FK
-  - id (UUID), userId, resumeId, description, createdAt, updatedAt
-- `companies` — Company research results
-  - id (UUID), jobId FK, userId FK, content, createdAt, updatedAt
+  - id (UUID PK), userId, resumeId (FK), name, content, createdAt, updatedAt
+- `companies` — Company research results from workflow
+  - id (UUID PK), userId, jobId (FK to resume_jobs), content, createdAt, updatedAt
 - `job_description_match` — JD vs resume matching analysis
-  - id (UUID), jobId FK, userId FK, content, createdAt, updatedAt
-- `resume_feedbacks` — Resume critique
-  - id (UUID), jobId FK, userId FK, content, createdAt, updatedAt
-- `cover_letter_history` — Generated cover letters + chat history
-  - id (UUID), jobId FK, userId FK, conversation (JSON array), createdAt, updatedAt
-- `message_gen_history` — Generated recruiter messages + chat history
-  - id (UUID), jobId FK, userId FK, conversation (JSON array), createdAt, updatedAt
-- `process` — Workflow node status tracking
-  - id (UUID), jobId FK, userId FK, nodeType (enum), status (Processing|Done|Failed), createdAt, updatedAt
+  - id (UUID PK), userId, jobId (FK to resume_jobs), content, createdAt, updatedAt
+- `resume_feedbacks` — Resume critique from workflow
+  - id (UUID PK), userId, jobId (FK to resume_jobs), content, createdAt, updatedAt
+- `cover_letter_history` — Generated cover letters + chat refinement history
+  - jobId (UUID PK, FK to resume_jobs), userId, conversation (JSON array of ChatLine[]), createdAt, updatedAt
+- `message_gen_history` — Generated recruiter messages + chat refinement history
+  - jobId (UUID PK, FK to resume_jobs), userId, conversation (JSON array of ChatLine[]), createdAt, updatedAt
+- `processes` — Workflow node status tracking
+  - id (UUID PK), userId, jobId (FK to resume_jobs), processType (text), status (text: pending|processing|done|failed), createdAt, updatedAt
 
 **Key constraints:**
-- All non-auth tables have userId FK and $onUpdate timestamps
-- process table tracks 5 nodes: Company, JDMatch, ResumeFeedback, Letter, Message
+- All non-auth tables have userId FK (user.id) and $onUpdate timestamps
+- All job-related records reference resume_jobs.id via jobId
+- process table tracks 5 node types: 'company', 'jdmatch', 'feedback', 'letter', 'message'
+- cover_letter_history and message_gen_history use jobId as PK (one record per job)
 
 ## Database Client (app/lib/db/index.ts)
 
@@ -133,18 +135,27 @@ Located in `app/lib/auth/index.ts`:
 
 ## Environment Variables
 
-**PostgreSQL:**
-- PGUSER, PGPASSWORD, PGHOST, PGPORT, PGDATABASE
+**PostgreSQL (required; crash on missing):**
+- PGUSER
+- PGPASSWORD
+- PGHOST
+- PGPORT
+- PGDATABASE
 
-**better-auth:**
-- BETTER_AUTH_SECRET (generate random string)
-- ORIGIN (production domain)
-- ORIGIN_DEV (http://localhost:3000)
+Checked in `app/lib/db/index.ts` with early error throw.
 
-**AI/Workflow:**
-- OPENROUTER_API_KEY (required for LLM nodes)
-- TAVILY_API_KEY (required for company research)
-- REASONING_MODEL (optional; default: meta-llama/llama-3.1-8b-instruct:free)
-- WRITING_MODEL (optional; default: same as above)
+**better-auth (required; crash if missing):**
+- BETTER_AUTH_SECRET (generate random string, e.g., `openssl rand -base64 32`)
+- ORIGIN (production domain, e.g., https://jobbedin.vercel.app)
+- ORIGIN_DEV (optional; defaults to ORIGIN if not set)
 
-No validation at app startup; missing vars crash during module import.
+**AI/Workflow (required for functionality; silent failure if missing):**
+- OPENROUTER_API_KEY (required for all LLM nodes; returns 500 if missing)
+- TAVILY_API_KEY (required for ResearchCompany node; node fails silently if missing)
+
+**AI/Workflow (optional):**
+- REASONING_MODEL (default: meta-llama/llama-3.1-8b-instruct)
+- WRITING_MODEL (default: meta-llama/llama-3.1-8b-instruct)
+
+Missing OPENROUTER_API_KEY causes silent failures in workflow; process status set to Failed without client error message.
+Missing TAVILY_API_KEY causes ResearchCompany node to fail silently.

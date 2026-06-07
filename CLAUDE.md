@@ -22,11 +22,19 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 
 ```
 app/
-├── api/              # Session-validated, userId-scoped routes
-├── components/       # AnalysisReport, ym/ UI primitives
-├── hooks/            # useChat, useMobile
-├── lib/              # api-handler, app-store, auth/, db/, workflow
-└── resumes/          # [id]/ job analysis hub
+├── api/                    # Session-validated, userId-scoped routes
+├── lib/
+│   ├── components/         # AnalysisReport, ym/ UI primitives
+│   │   └── ym/             # Yahoo Messenger design system components
+│   ├── hooks/              # useChat hook
+│   ├── auth/               # better-auth configuration
+│   ├── db/                 # Drizzle schema and database client
+│   ├── api-handler.ts      # Error handling and session validation
+│   ├── app-store.tsx       # Global state management
+│   ├── workflow.ts         # LangGraph workflow definition
+│   └── system-prompt.ts    # Centralized LLM prompts
+├── resumes/                # [id]/ job analysis hub
+└── page.tsx, layout.tsx    # Login page and root layout
 ```
 
 See full tree and entry points in [Pages & Routing](claude-docs/pages-routing.md).

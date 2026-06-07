@@ -10,17 +10,19 @@
 ## Route Structure
 
 ```
-/                       → Login page (public)
-/resumes                → Resume list and management (session-gated API)
-/resumes/[id]           → Job analysis hub for resume (session-gated API)
-/api/auth/[...all]      → better-auth handler (sign-in, sign-up, sign-out)
-/api/resumes            → GET/POST resumes (userId-scoped)
-/api/resumes/[id]       → DELETE resume (userId-scoped)
-/api/jobs               → GET/POST jobs (userId-scoped)
-/api/jobs/[id]          → DELETE job (userId-scoped)
-/api/jobs/[id]/analyze  → POST trigger workflow (returns 202, userId-scoped)
-/api/jobs/[id]/analysis → GET workflow results + process status (userId-scoped)
-/api/jobs/[id]/chat     → GET/POST chat history and LLM replies (userId-scoped)
+/                           → Login page (public)
+/resumes                    → Resume list and management (session-gated API)
+/resumes/[id]               → Job analysis hub for resume (session-gated API)
+
+API routes (all session-validated, userId-scoped):
+/api/auth/[...all]          → better-auth handler (sign-in, sign-up, sign-out)
+/api/resumes                → GET (list), POST (upload)
+/api/resumes/[id]           → GET (single), DELETE
+/api/jobs                   → GET (list by resumeId), POST (create)
+/api/jobs/[id]              → GET (single), DELETE
+/api/jobs/[id]/analyze      → POST (trigger workflow, returns 202)
+/api/jobs/[id]/analysis     → GET (workflow results + process status)
+/api/jobs/[id]/chat         → GET (conversation history), POST (send message or clear)
 ```
 
 ## Data Flow
@@ -59,16 +61,25 @@
 
 All routes validate session via `auth.api.getSession({ headers: request.headers })` and scope queries to userId.
 
-- `POST /api/resumes` — Upload resume; validates file type, extracts content (pdf-parse for PDFs), stores name + content
-- `GET /api/resumes` — List resumes scoped to userId
-- `DELETE /api/resumes/[id]` — Remove resume (userId-scoped)
-- `POST /api/jobs` — Create job with description; stores resumeId + description
-- `GET /api/jobs` — List jobs filtered by resumeId (userId-scoped)
+**Resume routes:**
+- `GET /api/resumes` — List resumes (userId-scoped, excludes content for speed)
+- `POST /api/resumes` — Upload resume from multipart/form-data; validates file type (.pdf, .txt, .md), extracts content (pdf-parse for PDFs, UTF-8 for text), stores name + content, returns { id }
+- `GET /api/resumes/[id]` — Get single resume with full content (lazy load)
+- `DELETE /api/resumes/[id]` — Remove resume and all related jobs/analysis
+
+**Job routes:**
+- `GET /api/jobs?resumeId=...` — List jobs filtered by resumeId (userId-scoped, excludes content)
+- `POST /api/jobs` — Create job with description; auto-names as "Job 1", "Job 2", etc., returns full job object
+- `GET /api/jobs/[id]` — Get single job with full content (lazy load)
 - `DELETE /api/jobs/[id]` — Remove job (userId-scoped)
-- `POST /api/jobs/[id]/analyze` — Trigger workflow; checks if already analyzed, clears old results, creates 5 process records, fire-and-forgets runWorkflow(), returns 202
-- `GET /api/jobs/[id]/analysis` — Returns company research, jdMatch, feedback, letterConversation, messageConversation, and array of 5 process statuses (used for polling)
-- `GET /api/jobs/[id]/chat` — Returns conversation history for a job
-- `POST /api/jobs/[id]/chat` — Accepts { mode, userMessage }, invokes ChatOpenAI LLM, persists conversation, returns { reply }
+
+**Analysis/Workflow routes:**
+- `POST /api/jobs/[id]/analyze` — Trigger LangGraph workflow; checks if already running, creates 5 process records, fire-and-forgets runWorkflow(), returns 202
+- `GET /api/jobs/[id]/analysis` — Get workflow results: company, jdMatch, feedback, letterConversation, messageConversation, array of 5 process statuses (for polling)
+
+**Chat routes:**
+- `GET /api/jobs/[id]/chat?mode=...` — Get conversation history for 'letter' or 'message' mode
+- `POST /api/jobs/[id]/chat` — Accept { mode, userMessage, conversation? }; if userMessage: invoke ChatOpenAI with system prompt + history, persist to DB, return { reply }; if conversation: clear and set new history
 
 ## Frontend Polling Pattern
 

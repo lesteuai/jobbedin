@@ -27,17 +27,17 @@
 - `app/resumes/page.tsx` (resume list)
 - `app/resumes/[id]/page.tsx` (job analysis hub)
 
-**UI Primitives:** Isolated under `app/components/ym/`
-- `AppFrame.tsx`, `YmButton.tsx`, `ChatPanel.tsx`, `Sidebar.tsx`, `YmModal.tsx`, `MarkdownPanel.tsx`
+**UI Primitives:** Isolated under `app/lib/components/ym/`
+- `AppFrame.tsx`, `YmButton.tsx`, `ChatPanel.tsx`, `Sidebar.tsx`, `YmModal.tsx`, `MarkdownPanel.tsx`, `YmErrorModal.tsx`
 
-**Composite Components:** Live in `app/components/` (not ym/)
+**Composite Components:** Live in `app/lib/components/` (not ym/)
 - `AnalysisReport.tsx` (page-level composition)
 
 **Utilities & State:** `app/lib/`
 - `api-handler.ts`, `app-store.tsx`, `auth/`, `db/`, `workflow.ts`, `system-prompt.ts`, `utils.ts`
 
-**Hooks:** `app/hooks/`
-- `use-chat.ts`, `use-mobile.tsx`
+**Hooks:** `app/lib/hooks/`
+- `use-chat.ts`
 
 **LLM Prompts:** All centralized in `app/lib/system-prompt.ts`
 - Never define prompts inline in routes or workflow nodes

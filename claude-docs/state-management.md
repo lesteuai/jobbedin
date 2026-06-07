@@ -7,36 +7,30 @@ Provides global resume/job state and CRUD operations via React Context. Data fet
 ### Store Interface
 
 ```typescript
-type Item = {
-  id: string;
-  resumeId?: string;        // jobs have resumeId FK
-  name: string;
-  content: string;          // lazily loaded for jobs
-  conversation?: string[];  // chat history
-  createdAt: Date;
-  updatedAt: Date;
-}
+type Item = { 
+  id: string; 
+  name: string; 
+  content: string;  // lazily loaded for jobs
+};
 
 type Store = {
   resumes: Item[];
   jobs: Item[];
   selectedResumeId: string | null;
   selectedJobId: string | null;
-  selectedJob: Item | null;
-  isLoading: boolean;
-  error: string | null;
   
   // CRUD operations
-  addResume(file: File, name: string): Promise<void>;
+  addResume(): string;  // Returns empty string; resume upload triggered via hidden file input
   deleteResume(id: string): Promise<void>;
   refreshResumes(): Promise<void>;
   selectResume(id: string): Promise<void>;
   
-  addJob(resumeId: string, description: string): Promise<string>;
+  addJob(content: string): Promise<string>;  // Returns jobId
   deleteJob(id: string): Promise<void>;
   selectJob(id: string | null): Promise<void>;  // async, lazy-loads job content
   clearStore(): void;  // reset all state on sign-out
   showError(message: string): void;
+  setJobs(jobs: Item[]): void;  // Internal helper for polling
 }
 ```
 
@@ -58,11 +52,19 @@ type Store = {
 - Called from login page after `authClient.signOut()` to remove cached data
 
 **CRUD operations backed by API:**
-- `addResume()` POSTs to `/api/resumes` with file + name
-- `deleteResume()` DELETEs from `/api/resumes/[id]`
-- `addJob()` POSTs to `/api/jobs` with description, returns jobId
-- `deleteJob()` DELETEs from `/api/jobs/[id]`
-- All operations trigger state refresh after completion
+- `addResume()` returns empty string; actual upload triggered by file input onChange handler
+- `deleteResume()` DELETEs from `/api/resumes/[id]`, updates local state
+- `addJob()` POSTs to `/api/jobs` with resumeId + content, returns jobId
+- `deleteJob()` DELETEs from `/api/jobs/[id]`, updates local state
+- `selectJob()` lazy-loads full job content if not already present
+- `setJobs()` internal helper used by polling mechanism during analysis
+
+**Resume upload flow:**
+1. Hidden `<input type="file">` in ResumesPage
+2. onChange triggers file upload to `/api/resumes`
+3. API returns new resume with id
+4. Call `refreshResumes()` to update list
+5. Call `selectResume(newId)` to select and display it
 
 ## Usage in Components
 

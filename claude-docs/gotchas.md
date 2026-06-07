@@ -166,9 +166,14 @@ Example:
 
 ## Architecture Evolution Notes
 
-- Next.js App Router migration completed (see git history)
-- Middleware removed (commit 540145d); now API-only validation
+- Next.js App Router migration completed
+- Middleware removed; now API-only validation
 - PDF parsing added to support PDF resume extraction
-- Prompts extracted to system-prompt.ts (commits a4604ce, 9db07f6)
-- Jobs page refactored (commit beea0fa): chat to useChat hook, analysis to AnalysisReport, UI to ChatPanel
-- AppStore fetch session-gated (commit 3df0c81); clearStore() on sign-out
+- Prompts extracted to system-prompt.ts for reuse between workflow and chat
+- Jobs page refactored: chat moved to useChat hook, analysis to AnalysisReport component, UI to ChatPanel
+- AppStore fetch session-gated; clearStore() called on sign-out
+- Components reorganized: all UI primitives and state under `app/lib/` (not spread across root)
+- useChat hook moved to `app/lib/hooks/` alongside other app-level hooks
+- Resume lazy-loading implemented: selectResume() fetches content only on first selection
+- Job lazy-loading implemented: selectJob() fetches content only on first selection
+- Analysis polling refactored: frontend polls `/api/jobs/[id]/analysis` every 1s during workflow execution

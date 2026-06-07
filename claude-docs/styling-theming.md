@@ -6,14 +6,19 @@ The color palette uses OKLch color space for precise control. This allows percep
 
 All colors are defined as CSS variables in `:root` in `app/globals.css`.
 
-**Example color definition:**
+**Yahoo Messenger color definitions (from `:root`):**
 ```css
-:root {
-  --color-primary: okl(0.5 0.2 220);    /* Perceptual lightness, chroma, hue */
-  --color-bg: okl(0.98 0 0);             /* Near-white background */
-  --color-text: okl(0.2 0 0);            /* Dark text */
-  --color-border: okl(0.8 0 0);          /* Light gray border */
-}
+--ym-window: oklch(0.93 0.005 90);          /* Main window background */
+--ym-panel: oklch(0.97 0.005 90);           /* Panel background */
+--ym-inset: oklch(0.99 0.003 90);           /* Sunken/inset areas */
+--ym-titlebar-from: oklch(0.45 0.18 295);   /* Deep purple */
+--ym-titlebar-to: oklch(0.55 0.20 270);     /* Purple-blue */
+--ym-accent: oklch(0.55 0.22 295);          /* Yahoo purple */
+--ym-accent-2: oklch(0.65 0.20 30);         /* Orange-y */
+--ym-text: oklch(0.18 0.02 280);            /* Dark text */
+--ym-muted: oklch(0.45 0.02 280);           /* Muted text */
+--ym-danger: oklch(0.55 0.22 27);           /* Error red */
+--ym-font: Tahoma, "MS Sans Serif", ...     /* System font */
 ```
 
 ## CSS Organization
@@ -57,29 +62,29 @@ Configured in `postcss.config.mjs` with `@tailwindcss/postcss` plugin.
 
 ## Design Tokens
 
-**Spacing scale:**
-- `0.25rem`, `0.5rem`, `0.75rem`, `1rem`, `1.5rem`, `2rem`, etc.
+**Spacing (inline styles and Tailwind):**
+- Typically 4px, 8px, 12px, 16px increments for consistency
+- Layout uses flexbox with gap property
 
 **Typography:**
-- Base font size: 14px
-- Heading scales: 16px, 18px, 20px
-- Line height: 1.5 (readable)
+- Base font size: 12px (Yahoo Messenger era)
+- Font family: Tahoma, "MS Sans Serif", Geneva, Verdana, sans-serif
+- Headings use fontWeight bold with explicit fontSize
 
 **Border radius:**
-- Subtle: 0.25rem
-- Normal: 0.5rem
-- Rounded: 1rem
-
-**Transitions:**
-- Fast: 150ms
-- Normal: 300ms
-- Slow: 500ms
+- Subtle: 2px (buttons, inputs)
+- Normal: 4px (window corners)
+- Rounded: 6px (top window corners)
 
 **Shadows:**
-- Subtle: `0 1px 2px rgba(0, 0, 0, 0.1)`
-- Elevated: `0 4px 6px rgba(0, 0, 0, 0.15)`
+- Window: inset highlight + outer drop shadow
+- Buttons: 3D beveled effect with border colors
+- No smooth drop shadows; all effects via borders and gradients
 
-All defined as CSS variables for consistent reuse.
+**Gradients:**
+- All gradients are linear, typically 180deg (top to bottom)
+- Used extensively on buttons, title bars, and tab controls
+- Colors reference CSS variables
 
 ## Responsive Design
 
@@ -87,11 +92,26 @@ Handled via Tailwind CSS v4 responsive prefixes (`sm:`, `md:`, `lg:`, `xl:`).
 
 No CSS breakpoints defined manually; inherited from Tailwind defaults.
 
-## No Hardcoded Colors
+## Color Usage Patterns
 
-Colors are always referenced via CSS variables, except in gradients (which are dynamic and require inline styles).
+**In CSS (globals.css):**
+Colors referenced via CSS variables. Gradients use oklch() directly for precise control.
 
-Example:
+**In React components:**
+- Inline styles for dynamic backgrounds, borders, text colors
+- Class names for static theming (`.ym-btn`, `.ym-window`, etc.)
+- Data attributes for state-based colors (`data-active`, etc.)
+
+Most color values are oklch() literals in globals.css; only referenced via var() in actual component styles.
+
+Example from globals.css:
 ```css
-background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+.ym-btn {
+  background: linear-gradient(180deg, #fefefe 0%, #d6d2c2 100%);
+  color: #000;
+}
+.ym-btn-primary {
+  background: linear-gradient(180deg, oklch(0.7 0.18 295) 0%, oklch(0.4 0.2 295) 100%);
+  color: white;
+}
 ```
