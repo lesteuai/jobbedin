@@ -9,7 +9,7 @@ import { YmButton } from '@/app/components/ym/YmButton';
 import { MarkdownPanel } from '@/app/components/ym/MarkdownPanel';
 import { useAppStore, apiErrorMessage } from '@/app/lib/app-store';
 import { useSession } from '@/app/lib/auth/client';
-import { useChat } from '@/app/hooks/use-chat';
+import { useChat } from '@/app/lib/hooks/use-chat';
 import { AnalysisReport } from '@/app/components/AnalysisReport';
 import type { Tab } from '@/app/components/AnalysisReport';
 
@@ -101,7 +101,7 @@ export default function ResumesJobsPage() {
     setProcessStatuses([]);
   }, [selectedJobId]);
 
-  useEffect(() => () => stopPolling(), []);
+  useEffect(() => stopPolling(), []);
 
   const handleAnalyze = async () => {
     if (!selectedJobId) return;

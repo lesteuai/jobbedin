@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import {
   resumeJob,
-  company,
-  jobDescriptionMatch,
-  resumeFeedback,
-  coverLetterHistory,
-  messageGenHistory,
   process as processTable,
   ProcessType,
   ProcessStatus,
@@ -44,29 +39,26 @@ export const POST = handleAsyncAuth(async (request: NextRequest, session, { para
     return NextResponse.json({ status: 'done' });
   }
 
-  await Promise.all([
-    db.delete(company).where(eq(company.jobId, jobId)),
-    db.delete(jobDescriptionMatch).where(eq(jobDescriptionMatch.jobId, jobId)),
-    db.delete(resumeFeedback).where(eq(resumeFeedback.jobId, jobId)),
-    db.delete(coverLetterHistory).where(eq(coverLetterHistory.jobId, jobId)),
-    db.delete(messageGenHistory).where(eq(messageGenHistory.jobId, jobId)),
-    db.delete(processTable).where(eq(processTable.jobId, jobId)),
-  ]);
+  const isInProgress = job.processes.some(
+    (p) => [ProcessStatus.Processing, ProcessStatus.Pending].includes(p.status as ProcessStatus)
+  );
 
-  await db.insert(processTable).values([
-    { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.Company, status: ProcessStatus.Processing },
-    { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.JDMatch, status: ProcessStatus.Processing },
-    { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.ResumeFeedback, status: ProcessStatus.Processing },
-    { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.Letter, status: ProcessStatus.Pending },
-    { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.Message, status: ProcessStatus.Pending },
-  ]);
+  if (!isInProgress) {
+    await db.insert(processTable).values([
+      { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.Company, status: ProcessStatus.Processing },
+      { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.JDMatch, status: ProcessStatus.Processing },
+      { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.ResumeFeedback, status: ProcessStatus.Processing },
+      { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.Letter, status: ProcessStatus.Pending },
+      { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.Message, status: ProcessStatus.Pending },
+    ]);
 
-  void runWorkflow({
-    jobId,
-    userId: session.user.id,
-    resumeText: job.resume?.content ?? '',
-    jobText: job.content ?? '',
-  });
+    runWorkflow({
+      jobId,
+      userId: session.user.id,
+      resumeText: job.resume?.content ?? '',
+      jobText: job.content ?? '',
+    });
+  }
 
   return NextResponse.json({ status: 'started' }, { status: 202 });
 });

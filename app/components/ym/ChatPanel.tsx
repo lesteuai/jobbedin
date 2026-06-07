@@ -2,7 +2,7 @@
 
 import type { RefObject } from 'react';
 import { YmButton } from './YmButton';
-import type { Mode, ChatLine } from '@/app/hooks/use-chat';
+import type { Mode, ChatLine } from '@/app/lib/hooks/use-chat';
 
 const PLACEHOLDER: Record<Mode, string> = {
   letter: 'Tell me how you want your letter to be like: tone, content highlights, etc',

@@ -3,7 +3,7 @@
 import { YmButton } from '@/app/components/ym/YmButton';
 import { MarkdownPanel } from '@/app/components/ym/MarkdownPanel';
 import { ChatPanel } from '@/app/components/ym/ChatPanel';
-import type { useChat } from '@/app/hooks/use-chat';
+import type { useChat } from '@/app/lib/hooks/use-chat';
 
 export const TABS = ['Company', 'JDMatch', 'Feedback', 'Generate'] as const;
 export type Tab = (typeof TABS)[number];
