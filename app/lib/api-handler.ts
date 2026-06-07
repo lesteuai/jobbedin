@@ -66,3 +66,34 @@ export function handleAsyncAuth<T extends unknown[]>(
     return await fn(request, session, ...args);
   });
 }
+
+function withErrorHandlingStream<T extends unknown[]>(
+  fn: (request: NextRequest, ...args: T) => Promise<Response>
+) {
+  return async (request: NextRequest, ...args: T): Promise<Response> => {
+    try {
+      return await fn(request, ...args);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (error instanceof UnauthorizedException) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (error instanceof NotFoundException) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+      }
+      console.error(`[${request.method}] ${request.nextUrl.pathname} error:`, error);
+      return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  };
+}
+
+export function handleAsyncAuthStream<T extends unknown[]>(
+  fn: (request: NextRequest, session: Awaited<ReturnType<typeof getSessionOrThrow>>, ...args: T) => Promise<Response>
+) {
+  return withErrorHandlingStream(async (request: NextRequest, ...args: T) => {
+    const session = await getSessionOrThrow(request);
+    return await fn(request, session, ...args);
+  });
+}
