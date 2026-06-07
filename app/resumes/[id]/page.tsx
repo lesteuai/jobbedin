@@ -99,6 +99,7 @@ export default function ResumesJobsPage() {
     stopPolling();
     setAnalysisData(null);
     setProcessStatuses([]);
+    setIsAnalyzing(false);
   }, [selectedJobId]);
 
   useEffect(() => stopPolling(), []);
@@ -211,8 +212,8 @@ export default function ResumesJobsPage() {
                 <div style={{ fontWeight: 'bold', fontSize: 13 }}>💼 {selected.name} — description</div>
                 <MarkdownPanel>{selected.content}</MarkdownPanel>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                  <YmButton variant="primary" disabled={isAnalyzing} onClick={handleAnalyze}>
-                    {isAnalyzing ? 'Analyzing...' : 'Analyze →'}
+                  <YmButton variant="primary" onClick={handleAnalyze}>
+                    Analyze →
                   </YmButton>
                 </div>
               </>

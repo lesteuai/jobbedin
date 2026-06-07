@@ -4,6 +4,7 @@ import { YmButton } from '@/app/components/ym/YmButton';
 import { MarkdownPanel } from '@/app/components/ym/MarkdownPanel';
 import { ChatPanel } from '@/app/components/ym/ChatPanel';
 import type { useChat } from '@/app/lib/hooks/use-chat';
+import { ProcessStatus } from '@/app/lib/db/schema';
 
 export const TABS = ['Company', 'JDMatch', 'Feedback', 'Generate'] as const;
 export type Tab = (typeof TABS)[number];
@@ -36,19 +37,18 @@ export function AnalysisReport({ selectedName, tab, setTab, analysisData, getPro
       const letterStatus = getProcessStatus('letter');
       const messageStatus = getProcessStatus('message');
       if (!letterStatus && !messageStatus) {
-        return <div style={{ color: '#666', fontStyle: 'italic' }}>Click Analyze to generate content.</div>;
+        return <div style={{ color: '#666', fontStyle: 'italic' }}>Generation failed for this section.</div>;
       }
-      if (['processing', 'pending'].includes(letterStatus ?? '') || ['processing', 'pending'].includes(messageStatus ?? '')) {
+      if ([ProcessStatus.Processing, ProcessStatus.Pending].includes(letterStatus as ProcessStatus) || [ProcessStatus.Processing, ProcessStatus.Pending].includes(messageStatus as ProcessStatus)) {
         return <div style={{ color: '#666', fontStyle: 'italic' }}>Generating...</div>;
       }
       return <ChatPanel {...chat} getProcessStatus={getProcessStatus} />;
     }
     const cfg = tabConfig[tab] ?? { processType: '', content: null };
     const status = getProcessStatus(cfg.processType);
-    if (status === 'done' && cfg.content) return <MarkdownPanel>{cfg.content}</MarkdownPanel>;
-    if (status === 'processing' || status === 'pending') return <div style={{ color: '#666', fontStyle: 'italic' }}>Processing...</div>;
-    if (status === 'failed') return <div style={{ color: '#c00', fontStyle: 'italic' }}>Analysis failed for this section.</div>;
-    return <div style={{ color: '#666', fontStyle: 'italic' }}>Click Analyze to generate analysis.</div>;
+    if (status === ProcessStatus.Done && cfg.content) return <MarkdownPanel>{cfg.content}</MarkdownPanel>;
+    if (status === ProcessStatus.Failed) return <div style={{ color: '#c00', fontStyle: 'italic' }}>Analysis failed for this section.</div>;
+    return <div style={{ color: '#666', fontStyle: 'italic' }}>Processing...</div>;
   };
 
   return (
