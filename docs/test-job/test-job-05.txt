@@ -1,0 +1,28 @@
+AI Memory Platform Architect & Engineer
+
+Leorna is an early-stage startup building a centralized big-data platform that gives AI agents persistent, long-term "forever" memory — ingesting data from everywhere and turning it into context agents can recall across sessions, sources, and time. We're moving fast toward funding and go-to-market.
+
+This is a hands-on role: you'll architect the platform AND build it. You own how the whole memory system fits together, and you write the code that brings it to life.
+
+What you'll do
+• Architect the unified memory model — combining vector (semantic), graph/knowledge-graph (relational), and temporal/episodic memory into one coherent platform.
+• Design and build the ingestion layer that reliably pulls data from many heterogeneous sources (apps, APIs, files, streams).
+• Build the retrieval layer that gets the right memory to the right agent at the right moment, within context-window and latency limits.
+• Decide how agents store, recall, summarize, consolidate, and forget over time.
+• Stand up evals and quality for memory (recall precision/recall, latency, cost); prevent context pollution and hallucination.
+• Architect for scale, multi-tenancy, security, and privacy of persistent, sensitive memory.
+• Take the platform from prototype to production fast, making pragmatic build-vs-buy calls across the stack.
+
+What we're looking for
+• Strong systems architecture AND hands-on engineering — you design it and you ship it.
+• Experience building large-scale distributed data or AI systems in production.
+• Familiarity with the agent-memory landscape (e.g., Letta/MemGPT, Mem0, Zep, Cognee, Graphiti) and the stores behind it (Neo4j/Neptune, Qdrant/Pinecone/pgvector, PostgreSQL).
+• Comfort moving fast with incomplete information and taking founding-level ownership.
+• You use AI tools daily and hold a current Claude or OpenAI Codex subscription (required).
+
+Compensation & logistics
+• Equity only right now (no cash before we close funding); cash salary plus additional equity once funding closes.
+• Fully remote.
+• High dedication, fast pace — we're racing to funding and market.
+
+To apply, please answer the screening questions below — they help us quickly assess fit.

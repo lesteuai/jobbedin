@@ -63,6 +63,15 @@ Provide exactly 3 highly specific suggestions on how to rephrase your existing b
 * [Specific instruction with a concrete Before/After example.]
 * [Specific instruction with a concrete Before/After example.]`;
 
+export const writing_style_prompt = `
+- First-person, active, confident, declarative voice.
+- Mix short and long sentences.
+- Clear topic sentence per paragraph.
+- Do not use apophasis (not X, not Y, but Z; not a <newline> but a), litotes (it isn't just X — it's Y), juxtaposition (like 'X isn't just about Y' or 'X is more than just Y' or 'X goes beyond Y')".
+- Do not use negative framing (No A, No B, No C).
+- Do not use rhetorical flourish or filler phrases.
+- Do not use em dashes "—".`;
+
 export const generate_letter_prompt = `Act as an expert Career Coach. Write a highly tailored, professional cover letter for the candidate.
 You have been provided with:
 1. The candidate's Resume.
@@ -72,13 +81,14 @@ You have been provided with:
 INSTRUCTIONS:
 - Use the 'Company Summary' to align the tone with their corporate culture.
 - Use the 'Cross Reference Insights' to highlight the candidate's most relevant project.
-- Keep it under 300 words. No robotic jargon (e.g., 'delve', 'testament').`;
+- End with close and name of candidate.
+- Keep it under 300 words. No robotic jargon (e.g., 'delve', 'testament').` + writing_style_prompt;
 
-export const generate_msg_prompt = `Act as a Career Coach. Write a brief networking message to a recruiter.
+export const generate_msg_prompt = `Act as a Career Coach. Write a brief paragraph to a recruiter.
 INSTRUCTIONS:
 - Highlight a match from the 'Cross Reference Insights'.
 - Reference a cultural trait or goal from the 'Company Summary' to show insider knowledge.
-- STRICT LIMIT: Must be between 75 and 95 words. Do not exceed 100 words.`;
+- STRICT LIMIT: Do not exceed 100 words.` + writing_style_prompt;
 
 export const feedback_prompt = `**System Prompt:** Act as a Senior Technical Recruiter and Career Coach specializing in Computer Science and STEM fields. Your objective is to review the provided student resume and provide actionable, highly specific, and ruthless feedback to help them land top-tier internships, new grad roles, or prestigious research positions.
 
