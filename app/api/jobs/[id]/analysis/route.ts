@@ -4,6 +4,7 @@ import { resumeJob } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { handleAsyncAuth, BadRequestException, NotFoundException } from '@/app/lib/api-handler';
 
+// [Moved to stream format]
 // Get analysis and messages for a ResumeJob
 export const GET = handleAsyncAuth(async (request: NextRequest, session, { params }: { params: Promise<{ id: string }> }) => {
 

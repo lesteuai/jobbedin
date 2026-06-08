@@ -85,6 +85,12 @@ export default function ResumesJobsPage() {
     es.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
+        if (data.error) {
+          showError(data.error);
+          stopStream();
+          setIsAnalyzing(false);
+          return;
+        }
         setAnalysisData({ company: data.company, jdMatch: data.jdMatch, feedback: data.feedback });
         setProcessStatuses(data.processes ?? []);
         if (data.letterConversation) chat.setChats((p) => ({ ...p, letter: data.letterConversation }));
@@ -103,8 +109,6 @@ export default function ResumesJobsPage() {
     setProcessStatuses([]);
     setIsAnalyzing(false);
   }, [selectedJobId]);
-
-  useEffect(() => stopStream, []);
 
   const handleAnalyze = async () => {
     if (!selectedJobId) return;

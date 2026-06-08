@@ -1,10 +1,12 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { resumeJob, ProcessStatus } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { handleAsyncAuthStream, BadRequestException } from '@/app/lib/api-handler';
+import { handleAsyncAuth, BadRequestException } from '@/app/lib/api-handler';
 
-export const GET = handleAsyncAuthStream(async (request: NextRequest, session, { params }: { params: Promise<{ id: string }> }) => {
+// Get analysis and messages for a ResumeJob
+export const GET = handleAsyncAuth(async (request: NextRequest, session, { params }: { params: Promise<{ id: string }> }) => {
+  
   const { id: jobId } = await params;
 
   if (!jobId) {
@@ -30,8 +32,9 @@ export const GET = handleAsyncAuthStream(async (request: NextRequest, session, {
           });
 
           if (!job) {
-            controller.error(new Error('Job not found'));
+            controller.enqueue(`data: ${JSON.stringify({ error: 'Job not found' })}\n\n`);
             if (intervalId) clearInterval(intervalId);
+            controller.close();
             return;
           }
 
@@ -61,8 +64,10 @@ export const GET = handleAsyncAuthStream(async (request: NextRequest, session, {
           }
         } catch (error) {
           console.error('[analysis-stream] Poll error:', error);
+          const message = error instanceof Error ? error.message : 'An error occurred during analysis';
+          controller.enqueue(`data: ${JSON.stringify({ error: message })}\n\n`);
           if (intervalId) clearInterval(intervalId);
-          controller.error(error);
+          controller.close();
         }
       };
 
@@ -78,7 +83,7 @@ export const GET = handleAsyncAuthStream(async (request: NextRequest, session, {
     if (intervalId) clearInterval(intervalId);
   });
 
-  return new Response(stream, {
+  return new NextResponse(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
