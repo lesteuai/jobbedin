@@ -118,7 +118,7 @@ export async function runWorkflow({
       await db.insert(company).values({
         id: randomUUID(),
         userId,
-        jobId: jobId as any,
+        jobId,
         content,
       });
 
@@ -127,7 +127,7 @@ export async function runWorkflow({
         .set({ status: ProcessStatus.Done })
         .where(
           and(
-            eq(processTable.jobId, jobId as any),
+            eq(processTable.jobId, jobId),
             eq(processTable.processType, ProcessType.Company)
           )
         );
@@ -139,7 +139,7 @@ export async function runWorkflow({
         .set({ status: ProcessStatus.Failed })
         .where(
           and(
-            eq(processTable.jobId, jobId as any),
+            eq(processTable.jobId, jobId),
             eq(processTable.processType, ProcessType.Company)
           )
         );
@@ -164,7 +164,7 @@ export async function runWorkflow({
       await db.insert(jobDescriptionMatch).values({
         id: randomUUID(),
         userId,
-        jobId: jobId as any,
+        jobId: jobId,
         content: result,
       });
 
@@ -173,7 +173,7 @@ export async function runWorkflow({
         .set({ status: ProcessStatus.Done })
         .where(
           and(
-            eq(processTable.jobId, jobId as any),
+            eq(processTable.jobId, jobId),
             eq(processTable.processType, ProcessType.JDMatch)
           )
         );
@@ -185,7 +185,7 @@ export async function runWorkflow({
         .set({ status: ProcessStatus.Failed })
         .where(
           and(
-            eq(processTable.jobId, jobId as any),
+            eq(processTable.jobId, jobId),
             eq(processTable.processType, ProcessType.JDMatch)
           )
         );
@@ -207,7 +207,7 @@ export async function runWorkflow({
       await db.insert(resumeFeedback).values({
         id: randomUUID(),
         userId,
-        jobId: jobId as any,
+        jobId: jobId,
         content: result,
       });
 
@@ -216,7 +216,7 @@ export async function runWorkflow({
         .set({ status: ProcessStatus.Done })
         .where(
           and(
-            eq(processTable.jobId, jobId as any),
+            eq(processTable.jobId, jobId),
             eq(processTable.processType, ProcessType.ResumeFeedback)
           )
         );
@@ -228,7 +228,7 @@ export async function runWorkflow({
         .set({ status: ProcessStatus.Failed })
         .where(
           and(
-            eq(processTable.jobId, jobId as any),
+            eq(processTable.jobId, jobId),
             eq(processTable.processType, ProcessType.ResumeFeedback)
           )
         );
@@ -243,7 +243,7 @@ export async function runWorkflow({
         .set({ status: ProcessStatus.Processing })
         .where(
           and(
-            eq(processTable.jobId, jobId as any),
+            eq(processTable.jobId, jobId),
             eq(processTable.processType, ProcessType.Letter)
           )
         );
@@ -263,7 +263,7 @@ export async function runWorkflow({
       });
 
       await db.insert(coverLetterHistory).values({
-        jobId: jobId as any,
+        jobId: jobId,
         userId,
         conversation: [{ role: 'ai', text: result }],
       });
@@ -273,7 +273,7 @@ export async function runWorkflow({
         .set({ status: ProcessStatus.Done })
         .where(
           and(
-            eq(processTable.jobId, jobId as any),
+            eq(processTable.jobId, jobId),
             eq(processTable.processType, ProcessType.Letter)
           )
         );
@@ -285,7 +285,7 @@ export async function runWorkflow({
         .set({ status: ProcessStatus.Failed })
         .where(
           and(
-            eq(processTable.jobId, jobId as any),
+            eq(processTable.jobId, jobId),
             eq(processTable.processType, ProcessType.Letter)
           )
         );
@@ -300,7 +300,7 @@ export async function runWorkflow({
         .set({ status: ProcessStatus.Processing })
         .where(
           and(
-            eq(processTable.jobId, jobId as any),
+            eq(processTable.jobId, jobId),
             eq(processTable.processType, ProcessType.Message)
           )
         );
@@ -320,7 +320,7 @@ export async function runWorkflow({
       });
 
       await db.insert(messageGenHistory).values({
-        jobId: jobId as any,
+        jobId: jobId,
         userId,
         conversation: [{ role: 'ai', text: result }],
       });
@@ -330,7 +330,7 @@ export async function runWorkflow({
         .set({ status: ProcessStatus.Done })
         .where(
           and(
-            eq(processTable.jobId, jobId as any),
+            eq(processTable.jobId, jobId),
             eq(processTable.processType, ProcessType.Message)
           )
         );
@@ -342,7 +342,7 @@ export async function runWorkflow({
         .set({ status: ProcessStatus.Failed })
         .where(
           and(
-            eq(processTable.jobId, jobId as any),
+            eq(processTable.jobId, jobId),
             eq(processTable.processType, ProcessType.Message)
           )
         );
