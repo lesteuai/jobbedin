@@ -6,7 +6,7 @@ import { authClient, useSession } from '@/app/lib/auth/client';
 import { YmButton } from '@/app/lib/components/ym/YmButton';
 import { useAppStore } from '@/app/lib/app-store';
 
-type Mode = 'signin' | 'signup'; // | 'forgot';
+type Mode = 'signin' | 'signup' | 'forgot';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
     if (session?.user) router.replace('/resumes');
@@ -27,19 +28,20 @@ export default function LoginPage() {
   const titles: Record<Mode, string> = {
     signin: 'Sign In',
     signup: 'Sign Up',
-    // forgot: 'Forgot Password',
+    forgot: 'Forgot Password',
   };
 
   const submitLabel: Record<Mode, string> = {
     signin: 'Sign In',
     signup: 'Sign Up',
-    // forgot: 'Send Reset Link',
+    forgot: 'Send Reset Link',
   };
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setInfo(null);
 
     try {
       if (mode === 'signin') {
@@ -59,6 +61,16 @@ export default function LoginPage() {
           clearStore();
           await refreshResumes();
           router.push('/resumes');
+        }
+      } else if (mode === 'forgot') {
+        const result = await authClient.requestPasswordReset({
+          email,
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (result.error) {
+          setError(result.error.message || 'Failed to send reset link');
+        } else {
+          setInfo('Check your email for a link to reset your password.');
         }
       }
     } catch (err) {
@@ -118,10 +130,7 @@ export default function LoginPage() {
               />
             </label>
             
-            {/* {mode !== 'forgot' && ( */
-              // Disable forgot mode in the rendered Password input
-            }
-            {
+            {mode !== 'forgot' && (
               <label style={{ fontSize: 12 }}>
                 Password
                 <input
@@ -134,11 +143,17 @@ export default function LoginPage() {
                   disabled={loading}
                 />
               </label>
-            }
+            )}
 
             {error && (
               <div style={{ fontSize: 12, color: 'oklch(0.5 0.2 10)', marginTop: 4 }}>
                 {error}
+              </div>
+            )}
+
+            {info && (
+              <div style={{ fontSize: 12, color: 'oklch(0.5 0.15 145)', marginTop: 4 }}>
+                {info}
               </div>
             )}
 
@@ -167,9 +182,9 @@ export default function LoginPage() {
                 <button type="button" onClick={() => setMode('signup')} style={linkBtn}>
                   Sign Up
                 </button>
-                {/* <button type="button" onClick={() => setMode('forgot')} style={linkBtn}>
+                <button type="button" onClick={() => setMode('forgot')} style={linkBtn}>
                   Forgot Password
-                </button> */}
+                </button>
               </>
             )}
             {mode === 'signup' && (
@@ -177,11 +192,11 @@ export default function LoginPage() {
                 Back to Sign In
               </button>
             )}
-            {/* {mode === 'forgot' && (
+            {mode === 'forgot' && (
               <button type="button" onClick={() => setMode('signin')} style={linkBtn}>
                 Back to Sign In
               </button>
-            )} */}
+            )}
           </div>
         </div>
       </div>

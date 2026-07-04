@@ -13,7 +13,7 @@
 ## Tasks
 - [x] T1 (status: done, deps: none) — Add `nodemailer` (+ `@types/nodemailer`) and a mailer helper `sendEmail()` gated by `EMAIL_ENABLED`; add SMTP + flag vars to `.env.example` — files: package.json, app/lib/email.ts, .env.example
 - [x] T2 (status: done, deps: T1) — Wire better-auth config: `emailVerification.sendVerificationEmail` + `requireEmailVerification`/`sendOnSignUp` gated by flag, `emailAndPassword.sendResetPassword`, `user.deleteUser` with `sendDeleteAccountVerification` — all no-ops when flag off — files: app/lib/auth/index.ts
-- [ ] T3 (status: todo, deps: T2) — Add `forgot` mode to login screen (request reset via `authClient.requestPasswordReset`) and a `/reset-password` page that consumes the token via `authClient.resetPassword` — files: app/page.tsx, app/reset-password/page.tsx
+- [x] T3 (status: done, deps: T2) — Add `forgot` mode to login screen (request reset via `authClient.requestPasswordReset`) and a `/reset-password` page that consumes the token via `authClient.resetPassword` — files: app/page.tsx, app/reset-password/page.tsx
 - [ ] T4 (status: todo, deps: T3) — Add "Delete Account" mode below Sign Up on the login screen: sign in with email+password then `authClient.deleteUser({ password })`, with confirmation prompt — files: app/page.tsx
 
 ## Notes
