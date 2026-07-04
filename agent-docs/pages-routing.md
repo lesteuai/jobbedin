@@ -3,14 +3,16 @@
 ## Key Entry Points
 
 - `app/layout.tsx` — Root layout with metadata and AppStoreProvider wrapper
-- `app/page.tsx` — Login page with better-auth sign-in/sign-up integration (public)
+- `app/page.tsx` — Login page with 4 modes: signin, signup, forgot-password, delete-account (public)
+- `app/reset-password/page.tsx` — Password reset form; reads token from query string; calls authClient.resetPassword() (public)
 - `app/resumes/page.tsx` — Resume management, preview, and "To Job" navigation; API-protected via session validation
 - `app/resumes/[id]/page.tsx` — Job analysis hub for selected resume; calls selectResume() on mount; delegates to AnalysisReport and useChat hook
 
 ## Route Structure
 
 ```
-/                           → Login page (public)
+/                           → Login page (public; 4 modes: signin, signup, forgot, delete)
+/reset-password             → Password reset form with token (public)
 /resumes                    → Resume list and management (session-gated API)
 /resumes/[id]               → Job analysis hub for resume (session-gated API)
 
@@ -42,6 +44,21 @@ API routes (all session-validated, userId-scoped):
 12. LLM response persisted to database; conversation history stored in conversation column
 
 ## Page Implementation Details
+
+### app/page.tsx (Login)
+- Manages 4 modes: 'signin', 'signup', 'forgot', 'delete'
+- Sign in: email + password via `authClient.signIn.email({email, password})`; auto-navigates to /resumes
+- Sign up: email + password via `authClient.signUp.email({email, password, name})`; auto-navigates to /resumes
+- Forgot password: email only; calls `authClient.requestPasswordReset({email, redirectTo: '/reset-password'})` which triggers email send if EMAIL_ENABLED
+- Delete account: requires confirmation dialog, password verification (sign-in), then `authClient.deleteUser({password})`; shows info message about potential email confirmation requirement
+- Auto-redirects to /resumes if session exists, except during delete mode (skip redirect to allow deletion flow to complete)
+
+### app/reset-password/page.tsx
+- Wrapped in Suspense due to useSearchParams dependency
+- Reads token from query string
+- Submits via `authClient.resetPassword({newPassword, token})`
+- Shows success state with button back to sign in
+- Shows error state if token missing or reset fails
 
 ### app/resumes/page.tsx
 - Resume list, selection, markdown preview

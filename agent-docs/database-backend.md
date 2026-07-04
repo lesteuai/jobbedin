@@ -127,6 +127,25 @@ Located in `app/lib/auth/index.ts`:
 - Drizzle ORM adapter for session/user storage
 - Uses BETTER_AUTH_SECRET and ORIGIN env vars
 
+**Email verification:**
+- Controlled by EMAIL_ENABLED flag (process.env.EMAIL_ENABLED === 'true')
+- When enabled: sign-up requires email verification; verification link sent via nodemailer; auto sign-in after verification
+- When disabled: sign-up completes immediately (local dev mode)
+
+**Password reset:**
+- Triggered by POST request with email on login page (forgot-password mode)
+- When enabled: reset link sent via nodemailer
+- Handler calls `authClient.requestPasswordReset({email, redirectTo})` which generates token and sends email
+- User clicks link in email, navigates to `/reset-password?token=...`, enters new password
+- Reset handler calls `authClient.resetPassword({newPassword, token})`
+
+**Account deletion:**
+- Triggered by delete account mode on login page
+- Requires user confirmation dialog, then password verification (sign-in)
+- When EMAIL_ENABLED: deletion requires email confirmation link (sent via nodemailer); user clicks link to finalize deletion
+- When EMAIL_ENABLED=false: deletion completes immediately via password verification (no email callback needed)
+- Gotcha: Conditional spread of `sendDeleteAccountVerification` callback only when EMAIL_ENABLED=true; when false, better-auth skips email verification path and completes deletion via password
+
 **Session management:**
 - Cookies set automatically by better-auth
 - `authClient.signOut()` clears cookies on client
@@ -156,6 +175,11 @@ Checked in `app/lib/db/index.ts` with early error throw.
 **AI/Workflow (optional):**
 - REASONING_MODEL (default: meta-llama/llama-3.1-8b-instruct)
 - WRITING_MODEL (default: meta-llama/llama-3.1-8b-instruct)
+
+**Email (optional; defaults to disabled):**
+- EMAIL_ENABLED (set to 'true' to enable email; false disables all outbound email and email verification)
+- SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM (required only when EMAIL_ENABLED=true)
+- When EMAIL_ENABLED=false: all sendEmail() calls become no-ops logged to console; email verification skipped on sign-up; account deletion completes immediately without email confirmation
 
 Missing OPENROUTER_API_KEY causes silent failures in workflow; process status set to Failed without client error message.
 Missing TAVILY_API_KEY causes ResearchCompany node to fail silently.

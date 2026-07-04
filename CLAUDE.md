@@ -13,7 +13,7 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 ## Architecture Layers
 
 - **Frontend**: React components with `use client`, AppStore context for state, Yahoo Messenger design system (`ym-` classes)
-- **Authentication**: better-auth 1.6.11 with email/password flow; session validation on all API routes
+- **Authentication**: better-auth 1.6.11 with email/password flow; email verification (optional via EMAIL_ENABLED flag); password reset via emailed token; account deletion with optional email confirmation; session validation on all API routes
 - **Database**: PostgreSQL + Drizzle ORM; all data scoped to userId; migrations in `drizzle/`
 - **API**: Next.js App Router routes; `handleAsync` wrapper for global error handling; all routes return 401 if session invalid
 - **AI Workflow**: LangGraph StateGraph with 5 parallel/sequential nodes (ResearchCompany, CrossRef, ResumeFeedback → GenerateLetter, GenerateMsg); fire-and-forget execution; results and process status streamed to client via SSE (Server-Sent Events)
@@ -57,6 +57,7 @@ See full tree and entry points in [Pages & Routing](agent-docs/pages-routing.md)
 pnpm install
 cp .env.example .env.local
 # Fill in: PGUSER, PGPASSWORD, PGHOST, PGPORT, PGDATABASE, BETTER_AUTH_SECRET, ORIGIN, OPENROUTER_API_KEY, TAVILY_API_KEY
+# Optional: EMAIL_ENABLED, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM (leave EMAIL_ENABLED=false for local dev without email)
 pnpm dev
 ```
 

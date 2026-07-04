@@ -69,6 +69,29 @@ Resume files stored by name (without extension). Duplicate names create separate
 
 **Expired sessions:** Still present in database until manually deleted
 
+## EMAIL_ENABLED Flag Behavior
+
+Located in `app/lib/email.ts`, exported as `EMAIL_ENABLED = process.env.EMAIL_ENABLED === 'true'`.
+
+**When EMAIL_ENABLED=true:**
+- All email callbacks wired: sign-up verification, password reset, account deletion confirmation
+- `sendEmail()` uses nodemailer to send via SMTP (requires SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM)
+- Email verification required on sign-up; auto sign-in after verification
+- Password reset requires clicking emailed token link
+- Account deletion requires clicking emailed confirmation link
+
+**When EMAIL_ENABLED=false (default for local dev):**
+- All `sendEmail()` calls become no-ops; console.log instead
+- Email verification skipped; sign-up completes immediately
+- Password reset does NOT send email (feature disabled; sign-up flow still works without email)
+- Account deletion completes immediately via password verification (no email callback needed)
+
+**Critical gotcha for deleteUser:**
+- better-auth has conditional logic: if `sendDeleteAccountVerification` callback is NOT defined, deletion completes via password
+- This callback is conditionally spread into config ONLY when EMAIL_ENABLED=true
+- Result: Local runs (EMAIL_ENABLED=false) delete immediately; production runs (EMAIL_ENABLED=true) require email confirmation
+- If EMAIL_ENABLED is true but SMTP vars missing, sendEmail() will crash the workflow
+
 ## Environment Variables
 
 **No validation on startup.** Missing vars crash during module import.
@@ -78,6 +101,11 @@ Resume files stored by name (without extension). Duplicate names create separate
 
 **better-auth vars (required):**
 - BETTER_AUTH_SECRET, ORIGIN, ORIGIN_DEV
+
+**Email vars (optional):**
+- EMAIL_ENABLED (defaults to false; set to 'true' to enable email)
+- SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM (required only when EMAIL_ENABLED=true)
+- If EMAIL_ENABLED=true but SMTP vars missing, sendEmail() crashes
 
 **Workflow vars:**
 - OPENROUTER_API_KEY (required for LLM nodes)
