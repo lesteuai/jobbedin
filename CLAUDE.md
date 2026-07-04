@@ -37,18 +37,18 @@ app/
 └── page.tsx, layout.tsx    # Login page and root layout
 ```
 
-See full tree and entry points in [Pages & Routing](claude-docs/pages-routing.md).
+See full tree and entry points in [Pages & Routing](agent-docs/pages-routing.md).
 
 ## Module Documentation
 
-- [UI Components & Design System](claude-docs/ui-components.md) — Primitives, color system, theming
-- [State Management](claude-docs/state-management.md) — AppStore context, CRUD operations, lazy job loading
-- [Pages & Routing](claude-docs/pages-routing.md) — Route structure, data flow, entry points
-- [Styling & Theming](claude-docs/styling-theming.md) — Color palette, CSS organization, tokens
-- [Database & Backend](claude-docs/database-backend.md) — Schema, migrations, API routes, session validation
-- [LangGraph Workflow & Agents](claude-docs/workflow-agents.md) — Node definitions, LLM prompts, Tavily, process tracking
-- [Conventions & Patterns](claude-docs/conventions.md) — Naming, code org, React patterns, authentication
-- [Gotchas & Troubleshooting](claude-docs/gotchas.md) — Known issues, debugging, environment setup
+- [UI Components & Design System](agent-docs/ui-components.md) — Primitives, color system, theming
+- [State Management](agent-docs/state-management.md) — AppStore context, CRUD operations, lazy job loading
+- [Pages & Routing](agent-docs/pages-routing.md) — Route structure, data flow, entry points
+- [Styling & Theming](agent-docs/styling-theming.md) — Color palette, CSS organization, tokens
+- [Database & Backend](agent-docs/database-backend.md) — Schema, migrations, API routes, session validation
+- [LangGraph Workflow & Agents](agent-docs/workflow-agents.md) — Node definitions, LLM prompts, Tavily, process tracking
+- [Conventions & Patterns](agent-docs/conventions.md) — Naming, code org, React patterns, authentication
+- [Gotchas & Troubleshooting](agent-docs/gotchas.md) — Known issues, debugging, environment setup
 
 ## Development
 
@@ -73,4 +73,4 @@ pnpm lint
 pnpm build  # standalone output
 ```
 
-See [Conventions & Patterns](claude-docs/conventions.md) for naming, code org, and authentication patterns.
+See [Conventions & Patterns](agent-docs/conventions.md) for naming, code org, and authentication patterns.
