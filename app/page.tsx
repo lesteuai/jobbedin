@@ -6,7 +6,7 @@ import { authClient, useSession } from '@/app/lib/auth/client';
 import { YmButton } from '@/app/lib/components/ym/YmButton';
 import { useAppStore } from '@/app/lib/app-store';
 
-type Mode = 'signin' | 'signup' | 'forgot';
+type Mode = 'signin' | 'signup' | 'forgot' | 'delete';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,12 +29,14 @@ export default function LoginPage() {
     signin: 'Sign In',
     signup: 'Sign Up',
     forgot: 'Forgot Password',
+    delete: 'Delete Account',
   };
 
   const submitLabel: Record<Mode, string> = {
     signin: 'Sign In',
     signup: 'Sign Up',
     forgot: 'Send Reset Link',
+    delete: 'Delete Account',
   };
 
   async function handleSubmit(e: FormEvent) {
@@ -71,6 +73,25 @@ export default function LoginPage() {
           setError(result.error.message || 'Failed to send reset link');
         } else {
           setInfo('Check your email for a link to reset your password.');
+        }
+      } else if (mode === 'delete') {
+        if (!window.confirm('Permanently delete this account and all its data? This cannot be undone.')) {
+          setLoading(false);
+          return;
+        }
+        const signInResult = await authClient.signIn.email({ email, password });
+        if (signInResult.error) {
+          setError('Invalid email or password');
+        } else {
+          const result = await authClient.deleteUser({ password });
+          if (result.error) {
+            setError(result.error.message || 'Failed to delete account');
+          } else {
+            clearStore();
+            setInfo(
+              'If confirmation is required, check your email to finish deleting your account. Otherwise your account has been deleted.'
+            );
+          }
         }
       }
     } catch (err) {
@@ -188,11 +209,21 @@ export default function LoginPage() {
               </>
             )}
             {mode === 'signup' && (
+              <>
+                <button type="button" onClick={() => setMode('signin')} style={linkBtn}>
+                  Back to Sign In
+                </button>
+                <button type="button" onClick={() => setMode('delete')} style={linkBtn}>
+                  Delete Account
+                </button>
+              </>
+            )}
+            {mode === 'forgot' && (
               <button type="button" onClick={() => setMode('signin')} style={linkBtn}>
                 Back to Sign In
               </button>
             )}
-            {mode === 'forgot' && (
+            {mode === 'delete' && (
               <button type="button" onClick={() => setMode('signin')} style={linkBtn}>
                 Back to Sign In
               </button>
