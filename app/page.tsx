@@ -19,11 +19,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  // In delete mode we sign in transiently to delete the account, so skip the
+  // auto-redirect that would otherwise navigate into the app before the result renders.
   useEffect(() => {
-    if (session?.user) router.replace('/resumes');
-  }, [session?.user, router]);
+    if (session?.user && mode !== 'delete') router.replace('/resumes');
+  }, [session?.user, mode, router]);
 
-  if (isPending || session?.user) return null;
+  if (isPending || (session?.user && mode !== 'delete')) return null;
 
   const titles: Record<Mode, string> = {
     signin: 'Sign In',

@@ -20,5 +20,12 @@
 - T3 and T4 both edit `app/page.tsx`, so they run sequentially (T4 after T3).
 - Export `requestPasswordReset`, `resetPassword`, `deleteUser` from `app/lib/auth/client.ts` as needed.
 
-## Code Review
-_(appended in Phase 3)_
+## Code Review (medium)
+
+Findings:
+1. **[high, CONFIRMED] Delete never deletes when EMAIL_ENABLED=false** — `app/lib/auth/index.ts`. better-auth takes the verification path whenever `sendDeleteAccountVerification` is set (even with a password), and only deletes once the emailed token is presented. With the flag off, `sendEmail` is a no-op so no link is sent and the account is never deleted, yet `deleteUser` returns success and the UI claims success. Fix: only wire `sendDeleteAccountVerification` when `EMAIL_ENABLED` is true.
+2. **[medium, PLAUSIBLE] Delete flow redirects to /resumes mid-operation** — `app/page.tsx`. Signing in inside the delete branch flips `useSession`, triggering the `useEffect` redirect to `/resumes` before the delete result renders. Fix: suppress the auto-redirect while in `delete` mode.
+
+## Follow-up Tasks
+- [x] F1 (status: done, deps: none) — Gate `sendDeleteAccountVerification` behind `EMAIL_ENABLED` so local deletion is immediate — files: app/lib/auth/index.ts
+- [x] F2 (status: done, deps: none) — Skip the session auto-redirect during `delete` mode so the result renders — files: app/page.tsx

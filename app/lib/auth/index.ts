@@ -40,13 +40,18 @@ export const auth = betterAuth({
 	user: {
 		deleteUser: {
 			enabled: true,
-			sendDeleteAccountVerification: async ({ user, url }) => {
-				void sendEmail({
-					to: user.email,
-					subject: 'Confirm your JobbedIn account deletion',
-					text: `Click the link to confirm account deletion: ${url}`,
-				});
-			},
+			// Only require email confirmation when email is on. Otherwise better-auth
+			// takes the verification path (even with a password) and never deletes,
+			// so local runs delete immediately via the supplied password.
+			...(EMAIL_ENABLED && {
+				sendDeleteAccountVerification: async ({ user, url }) => {
+					void sendEmail({
+						to: user.email,
+						subject: 'Confirm your JobbedIn account deletion',
+						text: `Click the link to confirm account deletion: ${url}`,
+					});
+				},
+			}),
 		},
 	},
 });
