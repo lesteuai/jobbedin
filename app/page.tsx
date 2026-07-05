@@ -6,7 +6,7 @@ import { authClient, useSession } from '@/app/lib/auth/client';
 import { YmButton } from '@/app/lib/components/ym/YmButton';
 import { useAppStore } from '@/app/lib/app-store';
 
-const EMAIL_ENABLED = process.env.EMAIL_ENABLED === 'true';
+const EMAIL_ENABLED = process.env.NEXT_PUBLIC_EMAIL_ENABLED === 'true';
 
 type Mode = 'signin' | 'signup' | 'forgot' | 'delete';
 
@@ -95,10 +95,14 @@ export default function LoginPage() {
           setError(result.error.message || 'Sign up failed');
         } else {
           handleModeChange('signin');
-          setInfo('Signup confirmation is sent to your email.');
           if (EMAIL_ENABLED) {
+            setInfo('Signup confirmation is sent to your email.');
             setEmailSent(true);
             setCooldown(RESEND_COOLDOWN);
+          } else {
+            clearStore();
+            await refreshResumes();
+            router.push('/resumes');
           }
         }
       } else if (mode === 'forgot') {
@@ -109,8 +113,8 @@ export default function LoginPage() {
         if (result.error) {
           setError(result.error.message || 'Failed to send reset link');
         } else {
-          setInfo('Check your email for a link to reset your password.');
           if (EMAIL_ENABLED) {
+            setInfo('Check your email for a link to reset your password.');
             setEmailSent(true);
             setCooldown(RESEND_COOLDOWN);
           }
@@ -128,14 +132,12 @@ export default function LoginPage() {
           if (result.error) {
             setError(result.error.message || 'Failed to delete account');
           } else {
-            setInfo(
-              EMAIL_ENABLED
-                ? 'Delete confirmation is sent to your email.'
-                : 'Your account has been deleted.'
-            );
             if (EMAIL_ENABLED) {
+              setInfo('Delete confirmation is sent to your email.');
               setEmailSent(true);
               setCooldown(RESEND_COOLDOWN);
+            } else {
+              setInfo('Your account has been deleted.');
             }
           }
         }

@@ -1,6 +1,6 @@
 import nodemailer, { type Transporter } from 'nodemailer';
 
-export const EMAIL_ENABLED = process.env.EMAIL_ENABLED === 'true';
+export const EMAIL_ENABLED = process.env.NEXT_PUBLIC_EMAIL_ENABLED === 'true';
 
 let transport: Transporter | null = null;
 
