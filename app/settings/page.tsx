@@ -168,7 +168,7 @@ export default function SettingsPage() {
                     rows={5}
                     value={customLetterInstructions}
                     onChange={(e) => setCustomLetterInstructions(e.target.value)}
-                    style={{ marginTop: 4, width: '100%' }}
+                    style={{ marginTop: 4, width: '100%', resize: 'none' }}
                     disabled={promptsSaving}
                   />
                 </label>
@@ -179,7 +179,7 @@ export default function SettingsPage() {
                     rows={5}
                     value={customMsgInstructions}
                     onChange={(e) => setCustomMsgInstructions(e.target.value)}
-                    style={{ marginTop: 4, width: '100%' }}
+                    style={{ marginTop: 4, width: '100%', resize: 'none' }}
                     disabled={promptsSaving}
                   />
                 </label>
