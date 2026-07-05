@@ -1,6 +1,10 @@
 'use client';
 
 import type { RefObject } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { YmButton } from './YmButton';
 import { ProcessStatus, ProcessType } from '@/app/lib/db/schema';
 import type { Mode, ChatLine } from '@/app/lib/hooks/use-chat';
@@ -55,11 +59,19 @@ export function ChatPanel({
     return (
       <>
         {lines.map((l, i) => (
-          <div key={i} className="ym-chat-line">
+          <div key={i} className="ym-chat-line ym-md">
             <span className={l.role === 'user' ? 'ym-bubble-user' : 'ym-bubble-ai'}>
               {l.role === 'user' ? 'You: ' : 'JobbedIn-AI: '}
             </span>
-            {l.text}
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+              components={{
+                p: ({ node, ...props }) => <span {...props} />,
+              }}
+            >
+              {l.text}
+            </ReactMarkdown>
           </div>
         ))}
         {isAiTyping && (

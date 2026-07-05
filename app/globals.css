@@ -289,6 +289,10 @@
 .ym-md em { font-style: italic; }
 .ym-md hr { border: none; border-top: 1px dashed #888; margin: 10px 0; }
 .ym-md a { color: oklch(0.45 0.2 250); text-decoration: underline; }
+.ym-md table { border-collapse: collapse; margin: 8px 0; width: 100%; font-size: 12px; }
+.ym-md th, .ym-md td { border: 1px solid #999; padding: 3px 6px; text-align: left; vertical-align: top; }
+.ym-md th { background: #e8e8f0; font-weight: bold; }
+.ym-md del { text-decoration: line-through; }
 
 /* Blurry placeholder helper */
 .ym-blur-placeholder::placeholder {

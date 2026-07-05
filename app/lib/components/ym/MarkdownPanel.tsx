@@ -1,11 +1,16 @@
 "use client";
 
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 
 export function MarkdownPanel({ children }: { children: string }) {
   return (
     <div className="ym-inset ym-md" style={{ flex: 1, padding: 14, overflow: "auto", minHeight: 0 }}>
       <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
         components={{
           // 1. This makes the main Company Name (H1) purple
           h1: ({ node, ...props }) => (
