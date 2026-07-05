@@ -30,4 +30,11 @@ The auth client (`app/lib/auth/client.ts`) already exposes everything needed. Se
 - [x] T1 (status: done, deps: none) — Add `emailSent` state + `cooldown` timer + `handleResend()` + resend links for signup-verify, forgot, and delete; gate all by `EMAIL_ENABLED`. — files: app/page.tsx
 
 ## Code Review
-_(appended in Phase 3)_
+
+`/code-review medium` — no actionable findings.
+
+- State (`email`/`password`) is retained across mode transitions, so all resend calls have their inputs.
+- Post-signup `handleModeChange('signin')` + `setEmailSent(true)` batches to a consistent final state.
+- Delete resend relies on the transient session persisting after the first `deleteUser` call (documented in-code).
+- Conventions (CLAUDE.md): no em dashes in comments/commit, minimal comments, correct commit authorship.
+- Non-blocking: the `mode === 'signup'` branch in `handleResend` is defensive/dead (button only surfaces in `signin` post-signup); harmless, left as-is.
