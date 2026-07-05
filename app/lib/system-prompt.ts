@@ -72,7 +72,17 @@ export const writing_style_prompt = `
 - Do not use rhetorical flourish or filler phrases.
 - Do not use em dashes "—".`;
 
-export const generate_letter_prompt = `Act as an expert Career Coach. Write a highly tailored, professional cover letter for the candidate.
+function escapeTemplateBraces(text: string): string {
+  return text.replace(/{/g, '{{').replace(/}/g, '}}');
+}
+
+function appendCustomInstructions(basePrompt: string, customInstructions?: string | null): string {
+  if (!customInstructions?.trim()) return basePrompt;
+  return `${basePrompt}\n\nADDITIONAL USER INSTRUCTIONS:\n${escapeTemplateBraces(customInstructions.trim())}`;
+}
+
+export const generate_letter_prompt = (customInstructions?: string | null) => appendCustomInstructions(
+  `Act as an expert Career Coach. Write a highly tailored, professional cover letter for the candidate.
 You have been provided with:
 1. The candidate's Resume.
 2. The exact Job Description.
@@ -82,13 +92,18 @@ INSTRUCTIONS:
 - Use the 'Company Summary' to align the tone with their corporate culture.
 - Use the 'Cross Reference Insights' to highlight the candidate's most relevant project.
 - End with close and name of candidate.
-- Keep it under 300 words. No robotic jargon (e.g., 'delve', 'testament').` + writing_style_prompt;
+- Keep it under 300 words. No robotic jargon (e.g., 'delve', 'testament').` + writing_style_prompt,
+  customInstructions,
+);
 
-export const generate_msg_prompt = `Act as a Career Coach. Write a brief paragraph to a recruiter.
+export const generate_msg_prompt = (customInstructions?: string | null) => appendCustomInstructions(
+  `Act as a Career Coach. Write a brief paragraph to a recruiter.
 INSTRUCTIONS:
 - Highlight a match from the 'Cross Reference Insights'.
 - Reference a cultural trait or goal from the 'Company Summary' to show insider knowledge.
-- STRICT LIMIT: Do not exceed 100 words.` + writing_style_prompt;
+- STRICT LIMIT: Do not exceed 100 words.` + writing_style_prompt,
+  customInstructions,
+);
 
 export const feedback_prompt = `**System Prompt:** Act as a Senior Technical Recruiter and Career Coach specializing in Computer Science and STEM fields. Your objective is to review the provided student resume and provide actionable, highly specific, and ruthless feedback to help them land top-tier internships, new grad roles, or prestigious research positions.
 

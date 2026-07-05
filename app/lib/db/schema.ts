@@ -201,12 +201,28 @@ export const process = pgTable('processes', {
     .$onUpdate(() => new Date())
 });
 
+export const userSettings = pgTable('user_settings', {
+  userId: text('user_id')
+    .primaryKey()
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  customLetterInstructions: text('custom_letter_instructions'),
+  customMsgInstructions: text('custom_msg_instructions'),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at')
+    .$onUpdate(() => new Date())
+});
+
 // Relations
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   resumes: many(resume),
   resumeJobs: many(resumeJob),
+}));
+
+export const userSettingsRelations = relations(userSettings, ({ one }) => ({
+  user: one(user, { fields: [userSettings.userId], references: [user.id] }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

@@ -20,6 +20,7 @@ import {
   coverLetterHistory,
   messageGenHistory,
   process as processTable,
+  userSettings,
   ProcessType,
   ProcessStatus,
 } from '@/app/lib/db/schema';
@@ -94,6 +95,15 @@ export async function runWorkflow({
   resumeText,
   jobText,
 }: WorkflowParams): Promise<void> {
+  const userSettingsRow = await db
+    .select({
+      customLetterInstructions: userSettings.customLetterInstructions,
+      customMsgInstructions: userSettings.customMsgInstructions,
+    })
+    .from(userSettings)
+    .where(eq(userSettings.userId, userId))
+    .then((rows) => rows[0]);
+
   const run_ResearchCompany = async (state: typeof AgentState.State) => {
     try {
       const researchAgent = createReactAgent({
@@ -249,7 +259,9 @@ export async function runWorkflow({
         );
 
       const prompt = ChatPromptTemplate.fromMessages([
-        SystemMessagePromptTemplate.fromTemplate(generate_letter_prompt),
+        SystemMessagePromptTemplate.fromTemplate(
+          generate_letter_prompt(userSettingsRow?.customLetterInstructions)
+        ),
         HumanMessagePromptTemplate.fromTemplate(
           'JD Match info: {JDMatch_result}\nCompany info: {company_result}\nResume: {resume}\nJob Description: {job}'
         ),
@@ -306,7 +318,9 @@ export async function runWorkflow({
         );
 
       const prompt = ChatPromptTemplate.fromMessages([
-        SystemMessagePromptTemplate.fromTemplate(generate_msg_prompt),
+        SystemMessagePromptTemplate.fromTemplate(
+          generate_msg_prompt(userSettingsRow?.customMsgInstructions)
+        ),
         HumanMessagePromptTemplate.fromTemplate(
           'JD Match info: {JDMatch_result}\nCompany info: {company_result}\nResume: {resume}\nJob Description: {job}'
         ),

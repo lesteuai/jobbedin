@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
-import { coverLetterHistory, messageGenHistory, resumeJob, company, jobDescriptionMatch, resume, ProcessType } from '@/app/lib/db/schema';
+import { coverLetterHistory, messageGenHistory, resumeJob, company, jobDescriptionMatch, resume, userSettings, ProcessType } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
@@ -115,13 +115,17 @@ export const POST = handleAsyncAuth(async (
       line.role === 'user' ? new HumanMessage(line.text) : new AIMessage(line.text)
     );
 
-    const systemPrompt = mode === ProcessType.Letter ? generate_letter_prompt : generate_msg_prompt;
-
-    const [companyRows, jdMatchRows, resumeRows] = await Promise.all([
+    const [companyRows, jdMatchRows, resumeRows, userSettingsRows] = await Promise.all([
       db.select().from(company).where(eq(company.jobId, jobId)),
       db.select().from(jobDescriptionMatch).where(eq(jobDescriptionMatch.jobId, jobId)),
       db.select().from(resume).where(eq(resume.id, job[0].resumeId)),
+      db.select().from(userSettings).where(eq(userSettings.userId, session.user.id)),
     ]);
+
+    const settingsRow = userSettingsRows[0];
+    const systemPrompt = mode === ProcessType.Letter
+      ? generate_letter_prompt(settingsRow?.customLetterInstructions)
+      : generate_msg_prompt(settingsRow?.customMsgInstructions);
 
     const contextParts: string[] = [];
     if (jdMatchRows.length > 0 && jdMatchRows[0].content) {
