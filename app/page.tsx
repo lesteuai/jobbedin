@@ -20,12 +20,25 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  // Whether an email was just sent for the current mode, so we can offer a resend.
+  const [emailSent, setEmailSent] = useState(false);
+  // Seconds left before the resend link is clickable again.
+  const [cooldown, setCooldown] = useState(0);
+
+  const RESEND_COOLDOWN = 30;
 
   // In delete mode we sign in transiently to delete the account, so skip the
   // auto-redirect that would otherwise navigate into the app before the result renders.
   useEffect(() => {
     if (session?.user && mode !== 'delete') router.replace('/resumes');
   }, [session?.user, mode, router]);
+
+  // Tick the resend cooldown down to zero.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => setCooldown((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   if (isPending || (session?.user && mode !== 'delete')) return null;
 
@@ -43,12 +56,21 @@ export default function LoginPage() {
     delete: 'Delete Account',
   };
 
+  const resendLabel: Record<Mode, string> = {
+    signin: 'Resend verification email',
+    signup: 'Resend verification email',
+    forgot: 'Resend reset link',
+    delete: 'Resend delete confirmation',
+  };
+
   function handleModeChange(newMode: Mode) {
     setMode(newMode);
     setPassword('');
     setError(null);
     setInfo(null);
     setLoading(false);
+    setEmailSent(false);
+    setCooldown(0);
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -74,6 +96,10 @@ export default function LoginPage() {
         } else {
           handleModeChange('signin');
           setInfo('Signup confirmation is sent to your email.');
+          if (EMAIL_ENABLED) {
+            setEmailSent(true);
+            setCooldown(RESEND_COOLDOWN);
+          }
         }
       } else if (mode === 'forgot') {
         const result = await authClient.requestPasswordReset({
@@ -84,6 +110,10 @@ export default function LoginPage() {
           setError(result.error.message || 'Failed to send reset link');
         } else {
           setInfo('Check your email for a link to reset your password.');
+          if (EMAIL_ENABLED) {
+            setEmailSent(true);
+            setCooldown(RESEND_COOLDOWN);
+          }
         }
       } else if (mode === 'delete') {
         if (!window.confirm('Permanently delete this account and all its data? This cannot be undone.')) {
@@ -103,7 +133,56 @@ export default function LoginPage() {
                 ? 'Delete confirmation is sent to your email.'
                 : 'Your account has been deleted.'
             );
+            if (EMAIL_ENABLED) {
+              setEmailSent(true);
+              setCooldown(RESEND_COOLDOWN);
+            }
           }
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Resend the email tied to the current mode. Reuses the same endpoints as the
+  // initial send: verification (post-signup), reset link (forgot), delete confirmation (delete).
+  async function handleResend() {
+    setLoading(true);
+    setError(null);
+    setInfo(null);
+
+    try {
+      if (mode === 'signup' || mode === 'signin') {
+        const result = await authClient.sendVerificationEmail({ email, callbackURL: '/' });
+        if (result.error) {
+          setError(result.error.message || 'Failed to resend verification email');
+        } else {
+          setInfo('Verification email resent. Check your inbox.');
+          setCooldown(RESEND_COOLDOWN);
+        }
+      } else if (mode === 'forgot') {
+        const result = await authClient.requestPasswordReset({
+          email,
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (result.error) {
+          setError(result.error.message || 'Failed to resend reset link');
+        } else {
+          setInfo('Reset link resent. Check your email.');
+          setCooldown(RESEND_COOLDOWN);
+        }
+      } else if (mode === 'delete') {
+        // The transient sign-in session from the initial delete still exists, so
+        // re-calling deleteUser re-sends the confirmation without another sign-in.
+        const result = await authClient.deleteUser({ password });
+        if (result.error) {
+          setError(result.error.message || 'Failed to resend delete confirmation');
+        } else {
+          setInfo('Delete confirmation resent. Check your email.');
+          setCooldown(RESEND_COOLDOWN);
         }
       }
     } catch (err) {
@@ -210,6 +289,16 @@ export default function LoginPage() {
               fontSize: 12,
             }}
           >
+            {EMAIL_ENABLED && emailSent && (
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={loading || cooldown > 0}
+                style={{ ...linkBtn, opacity: loading || cooldown > 0 ? 0.5 : 1 }}
+              >
+                {cooldown > 0 ? `Resend in ${cooldown}s` : resendLabel[mode]}
+              </button>
+            )}
             {mode === 'signin' && (
               <>
                 <button type="button" onClick={() => handleModeChange('signup')} style={linkBtn}>
