@@ -6,7 +6,7 @@ import { authClient, useSession } from '@/app/lib/auth/client';
 import { YmButton } from '@/app/lib/components/ym/YmButton';
 import { useAppStore } from '@/app/lib/app-store';
 
-const EMAIL_ENABLED = process.env.EMAIL_ENABLED === 'true'
+const EMAIL_ENABLED = process.env.EMAIL_ENABLED === 'true';
 
 type Mode = 'signin' | 'signup' | 'forgot' | 'delete';
 
@@ -43,6 +43,14 @@ export default function LoginPage() {
     delete: 'Delete Account',
   };
 
+  function handleModeChange(newMode: Mode) {
+    setMode(newMode);
+    setPassword('');
+    setError(null);
+    setInfo(null);
+    setLoading(false);
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -64,9 +72,8 @@ export default function LoginPage() {
         if (result.error) {
           setError(result.error.message || 'Sign up failed');
         } else {
-          clearStore();
-          await refreshResumes();
-          router.push('/resumes');
+          handleModeChange('signin');
+          setInfo('Signup confirmation is sent to your email.');
         }
       } else if (mode === 'forgot') {
         const result = await authClient.requestPasswordReset({
@@ -91,7 +98,6 @@ export default function LoginPage() {
           if (result.error) {
             setError(result.error.message || 'Failed to delete account');
           } else {
-            clearStore();
             setInfo(
               EMAIL_ENABLED
                 ? 'Delete confirmation is sent to your email.'
@@ -206,19 +212,19 @@ export default function LoginPage() {
           >
             {mode === 'signin' && (
               <>
-                <button type="button" onClick={() => setMode('signup')} style={linkBtn}>
+                <button type="button" onClick={() => handleModeChange('signup')} style={linkBtn}>
                   Sign Up
                 </button>
-                <button type="button" onClick={() => setMode('forgot')} style={linkBtn}>
+                <button type="button" onClick={() => handleModeChange('forgot')} style={linkBtn}>
                   Forgot Password
                 </button>
-                <button type="button" onClick={() => setMode('delete')} style={linkBtn}>
+                <button type="button" onClick={() => handleModeChange('delete')} style={linkBtn}>
                   Delete Account
                 </button>
               </>
             )}
             {['signup', 'forgot', 'delete'].includes(mode) && (
-              <button type="button" onClick={() => setMode('signin')} style={linkBtn}>
+              <button type="button" onClick={() => handleModeChange('signin')} style={linkBtn}>
                 Back to Sign In
               </button>
             )}
