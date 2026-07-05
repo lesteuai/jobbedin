@@ -52,6 +52,7 @@ API routes (all session-validated, userId-scoped):
 - Forgot password: email only; calls `authClient.requestPasswordReset({email, redirectTo: '/reset-password'})` which triggers email send if EMAIL_ENABLED
 - Delete account: requires confirmation dialog, password verification (sign-in), then `authClient.deleteUser({password})`; shows info message about potential email confirmation requirement
 - Auto-redirects to /resumes if session exists, except during delete mode (skip redirect to allow deletion flow to complete)
+- Resend email: when `EMAIL_ENABLED` and an email was just sent (`emailSent` state), a footer link re-sends the current mode's email via `handleResend()`: verification (`authClient.sendVerificationEmail`), reset link (`requestPasswordReset`), or delete confirmation (`deleteUser`, reusing the transient session). A 30s `cooldown` (ticked by a `setInterval` effect) disables the link and shows "Resend in Ns"
 
 ### app/reset-password/page.tsx
 - Wrapped in Suspense due to useSearchParams dependency
