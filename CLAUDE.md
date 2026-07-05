@@ -4,19 +4,19 @@ An AI-assisted job application tool that researches companies and generates pers
 
 ## Quick Overview
 
-JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) design aesthetic. Users upload resumes, add job descriptions, and the app deploys a 5-node LangGraph workflow to research companies, critique resumes, match JD requirements, and generate personalized cover letters and recruiter messages. The chat interface enables iterative refinement of outputs.
+JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) design aesthetic. Users upload resumes, add job descriptions, and the app deploys a 5-node LangGraph workflow to research companies, critique resumes, match JD requirements, and generate personalized cover letters and recruiter messages. The chat interface enables iterative refinement with custom AI instructions, and outputs render with markdown styling.
 
-**Data flow:** Login → Upload Resume → Add Job → Analyze (async workflow + SSE stream) → View Results → Chat to Refine
+**Data flow:** Login → Upload Resume → Add Job → Analyze (async workflow + SSE stream) → View Results → Chat to Refine (with custom AI prompts) → Settings (manage password & instructions)
 
-**Key tech stack:** Next.js 16, React 19, Tailwind CSS v4, TypeScript, PostgreSQL, Drizzle ORM, better-auth, LangGraph, OpenRouter LLMs, Tavily search
+**Key tech stack:** Next.js 16, React 19, Tailwind CSS v4, TypeScript, PostgreSQL, Drizzle ORM, better-auth, LangGraph, OpenRouter LLMs, Tavily search, ReactMarkdown
 
 ## Architecture Layers
 
-- **Frontend**: React components with `use client`, AppStore context for state, Yahoo Messenger design system (`ym-` classes)
-- **Authentication**: better-auth 1.6.11 with email/password flow; email verification (optional via EMAIL_ENABLED flag); password reset via emailed token; account deletion with optional email confirmation; session validation on all API routes
-- **Database**: PostgreSQL + Drizzle ORM; all data scoped to userId; migrations in `drizzle/`
-- **API**: Next.js App Router routes; `handleAsync` wrapper for global error handling; all routes return 401 if session invalid
-- **AI Workflow**: LangGraph StateGraph with 5 parallel/sequential nodes (ResearchCompany, CrossRef, ResumeFeedback → GenerateLetter, GenerateMsg); fire-and-forget execution; results and process status streamed to client via SSE (Server-Sent Events)
+- **Frontend**: React components with `use client`, AppStore context for state, Yahoo Messenger design system (`ym-` classes); chat and analysis display use ReactMarkdown for styled content rendering
+- **Authentication**: better-auth 1.6.11 with email/password flow; email verification (optional via EMAIL_ENABLED flag); password reset via emailed token; account deletion with optional email confirmation; password change for authenticated users; resend email controls with 30s cooldown; session validation on all API routes
+- **Database**: PostgreSQL + Drizzle ORM; all data scoped to userId; migrations in `drizzle/`; userSettings table for per-user AI customization
+- **API**: Next.js App Router routes; `handleAsync` and `handleAsyncAuth` wrappers for error handling and session validation; all routes return 401 if session invalid
+- **AI Workflow**: LangGraph StateGraph with 5 parallel/sequential nodes (ResearchCompany, CrossRef, ResumeFeedback → GenerateLetter, GenerateMsg); fire-and-forget execution; results and process status streamed to client via SSE (Server-Sent Events); custom user instructions loaded from userSettings and appended to base prompts
 
 ## Directory Structure
 
@@ -24,17 +24,19 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 app/
 ├── api/                    # Session-validated, userId-scoped routes
 ├── lib/
-│   ├── components/         # AnalysisReport, ym/ UI primitives
+│   ├── components/         # AnalysisReport, MarkdownPanel, ym/ UI primitives
 │   │   └── ym/             # Yahoo Messenger design system components
 │   ├── hooks/              # useChat hook
 │   ├── auth/               # better-auth configuration
 │   ├── db/                 # Drizzle schema and database client
-│   ├── api-handler.ts      # Error handling and session validation
+│   ├── api-handler.ts      # Error handling and session validation (handleAsync, handleAsyncAuth)
 │   ├── app-store.tsx       # Global state management
-│   ├── workflow.ts         # LangGraph workflow definition
-│   └── system-prompt.ts    # Centralized LLM prompts
+│   ├── workflow.ts         # LangGraph workflow definition with custom prompt loading
+│   └── system-prompt.ts    # Centralized LLM prompts with custom instruction support
 ├── resumes/                # [id]/ job analysis hub
-└── page.tsx, layout.tsx    # Login page and root layout
+├── settings/               # User settings: password change, custom AI prompts
+├── page.tsx                # Login page (with resend email controls + 30s cooldown)
+└── layout.tsx              # Root layout
 ```
 
 See full tree and entry points in [Pages & Routing](agent-docs/pages-routing.md).

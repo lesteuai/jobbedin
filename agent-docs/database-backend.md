@@ -29,12 +29,15 @@ Located in `app/lib/db/schema.ts`. Uses PostgreSQL with Drizzle ORM for type-saf
   - jobId (UUID PK, FK to resume_jobs), userId, conversation (JSON array of ChatLine[]), createdAt, updatedAt
 - `processes` — Workflow node status tracking
   - id (UUID PK), userId, jobId (FK to resume_jobs), processType (text), status (text: pending|processing|done|failed), createdAt, updatedAt
+- `user_settings` — Per-user AI generation preferences
+  - userId (text PK, FK to user), customLetterInstructions (text), customMsgInstructions (text), createdAt, updatedAt
 
 **Key constraints:**
 - All non-auth tables have userId FK (user.id) and $onUpdate timestamps
 - All job-related records reference resume_jobs.id via jobId
 - process table tracks 5 node types: 'company', 'jdmatch', 'feedback', 'letter', 'message'
 - cover_letter_history and message_gen_history use jobId as PK (one record per job)
+- user_settings uses userId as PK (one record per user); custom prompts are optional (null if not set)
 
 ## Database Client (app/lib/db/index.ts)
 
@@ -68,14 +71,22 @@ const data = await db.query.resumes.findMany({
 
 **Critical:** Missing session validation opens route to unauthenticated access. Missing userId scoping in queries causes cross-user data leaks.
 
-## API Error Handling
+## API Error Handling & Session Validation
 
-All API routes use `handleAsync` wrapper from `app/lib/api-handler.ts`:
+All API routes use error-handling wrappers from `app/lib/api-handler.ts`:
 
+**handleAsync** — Basic error handling (no session validation):
 ```typescript
-export const GET = handleAsync(async (request, ctx) => {
+export const GET = handleAsync(async (request) => {
   // Handler code
-  // Unhandled throws caught globally, logged, returned as 500
+  return new Response(JSON.stringify(data), { status: 200 });
+});
+```
+
+**handleAsyncAuth** — Error handling + automatic session validation (newer pattern):
+```typescript
+export const GET = handleAsyncAuth(async (request, session) => {
+  // session guaranteed to exist; UnauthorizedException thrown if missing
   return new Response(JSON.stringify(data), { status: 200 });
 });
 ```
@@ -83,10 +94,12 @@ export const GET = handleAsync(async (request, ctx) => {
 **Wrapper behavior:**
 - Catches unhandled throws
 - Logs `[METHOD] /path error: ${message}`
-- Returns 500 JSON error response
+- Returns 500 JSON error response with { error: 'Internal server error' }
 - Supports both plain routes and dynamic `[id]` routes
+- handleAsyncAuth automatically validates session and throws UnauthorizedException if missing (returns 401)
+- Custom exceptions (BadRequestException, NotFoundException, UnauthorizedException) are caught and returned as 400, 404, 401 respectively
 
-**Intentional error responses** still returned explicitly inside handler (401, 400, 404).
+**Pattern:** All `/api/settings` and most new routes use `handleAsyncAuth` to enforce session validation at the wrapper level rather than per-route.
 
 ## Migrations
 
@@ -132,7 +145,14 @@ Located in `app/lib/auth/index.ts`:
 - When enabled: sign-up requires email verification; verification link sent via nodemailer; auto sign-in after verification
 - When disabled: sign-up completes immediately (local dev mode)
 
-**Password reset:**
+**Password change (authenticated users):**
+- Available on settings page (/app/settings/page.tsx) for logged-in users
+- Requires current password + new password
+- Handler calls `authClient.changePassword({currentPassword, newPassword})`
+- better-auth validates current password before allowing change
+- No email confirmation required for password change
+
+**Password reset (forgot-password flow):**
 - Triggered by POST request with email on login page (forgot-password mode)
 - When enabled: reset link sent via nodemailer
 - Handler calls `authClient.requestPasswordReset({email, redirectTo})` which generates token and sends email

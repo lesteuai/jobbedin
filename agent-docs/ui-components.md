@@ -29,27 +29,60 @@ Styled button with default and primary variants.
 ### ChatPanel.tsx
 Chat UI component for cover letter/message refinement.
 
-**Props from useChat hook:**
+**Props:**
 - `mode` — "letter" or "message"
-- `chats` — array of { role, text } message objects
+- `setMode(mode)` — switch between letter and message modes
+- `lines` — array of { role: 'user' | 'ai', text } message objects
 - `chatDraft` — current input text
+- `setChatDraft(text)` — update input
 - `isAiTyping` — shows typing indicator
 - `typingDots` — animated dots (`.`, `..`, `...`)
-- `handleSend()` — sends message
+- `canSend`, `canClear` — enable/disable buttons
+- `handleSend()` — sends message to LLM
 - `handleClear()` — clears conversation
 - `chatContainerRef` — auto-scroll container
+- `getProcessStatus(type)` — query process status (returns pending|processing|done|failed|null)
 
 **UI elements:**
 - Mode switcher (Cover Letter / Message)
-- Scrollable message list with typing indicator
-- Textarea input (Enter to send, Shift+Enter for newline)
+- Process status display (shows "Generating your..." when pending/processing; "Generation failed" if failed)
+- Scrollable message list with markdown rendering (ReactMarkdown with gfm + math plugins)
+- User and AI messages prefixed with "You:" and "JobbedIn-AI:"
+- Textarea input (Enter to send; Shift+Enter for newline)
 - Send and Clear buttons
+
+**Markdown rendering:**
+- Messages rendered with ReactMarkdown using remark-gfm (GitHub Flavored Markdown) and remark-math plugins
+- Custom component: paragraph tags rendered as `<span>` for inline display in chat context
+- Supports:
+  - Inline code, bold, italic
+  - Lists (unordered/ordered)
+  - Links
+  - Math expressions (via rehype-katex)
 
 ### Sidebar.tsx
 Reusable sidebar for list management (resumes, jobs, etc.).
 
 ### YmModal.tsx
 Confirmation dialog for destructive actions (delete, sign-out).
+
+### MarkdownPanel.tsx
+Renders markdown content for analysis display (company research, JD match, resume feedback).
+
+**Props:**
+- `children` — markdown string to render
+
+**Features:**
+- Renders full markdown with headings, lists, bold, italic, code blocks
+- Custom styles:
+  - H1 and H3 headings rendered in purple (`text-[#5b2b82]`) to match Yahoo Messenger theme
+  - H1 is 2xl font-bold with bottom margin
+  - H3 is lg font-bold with top/bottom margins
+  - Paragraphs and lists have spacing (mb-4, space-y-1)
+  - Unordered lists use disc bullets with left padding (pl-5)
+- Supports GitHub Flavored Markdown (tables, strikethrough, etc.)
+- Supports math expressions (LaTeX via rehype-katex)
+- Wrapped in `ym-inset` class for Yahoo Messenger styling with flex layout and auto-scroll
 
 ### MarkdownPanel.tsx
 Renders markdown content with proper styling for analysis display.

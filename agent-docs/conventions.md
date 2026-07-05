@@ -39,9 +39,13 @@
 **Hooks:** `app/lib/hooks/`
 - `use-chat.ts`
 
-**LLM Prompts:** All centralized in `app/lib/system-prompt.ts`
+**LLM Prompts & Custom Instructions:** All centralized in `app/lib/system-prompt.ts`
 - Never define prompts inline in routes or workflow nodes
 - Import prompts to enable reuse between workflow and chat refinement
+- Custom user instructions are loaded from userSettings table and appended to base prompts via `appendCustomInstructions(basePrompt, customInstructions)` helper
+- `generate_letter_prompt(customInstructions?)` and `generate_msg_prompt(customInstructions?)` accept optional custom instructions
+- Custom instructions use template brace escaping to avoid conflicts with LangChain template syntax
+- Pattern: Base prompt defines core behavior; custom instructions are appended as "ADDITIONAL USER INSTRUCTIONS:" section
 
 **Database:** Isolated in `app/lib/db/`
 - `schema.ts` (Drizzle table definitions)
@@ -114,11 +118,23 @@ background-color: var(--color-primary);
 
 ## Authentication (better-auth)
 
-**Session validation:** All API routes must validate before accessing data
+**Session validation patterns:**
+
+Traditional pattern (manual in each route):
 ```typescript
 const session = await auth.api.getSession({ headers: request.headers });
 if (\!session) return new Response('Unauthorized', { status: 401 });
 ```
+
+New pattern (automatic via wrapper):
+```typescript
+export const GET = handleAsyncAuth(async (request, session) => {
+  // session is guaranteed to exist; UnauthorizedException thrown if missing (returns 401)
+  return NextResponse.json(data);
+});
+```
+
+Prefer `handleAsyncAuth` for new routes; it wraps session validation and error handling.
 
 **userId scoping:** All database queries must filter by userId
 ```typescript
@@ -130,6 +146,34 @@ const data = await db.query.resumes.findMany({
 **No middleware route protection:** Pages are public; API-level validation is security boundary
 
 **Sign-out:** Call `authClient.signOut()` on frontend, then `clearStore()` to reset state
+
+**Password change (authenticated flow):**
+- Call `authClient.changePassword({currentPassword, newPassword})` from settings page
+- Requires current password validation (built into better-auth)
+- No email confirmation needed
+
+**Password reset (forgot-password flow):**
+- Call `authClient.requestPasswordReset({email, redirectTo})` from login page
+- Sends email with reset link; user navigates to /reset-password?token=...
+- Call `authClient.resetPassword({newPassword, token})` to complete
+
+## Asynchronous Patterns
+
+**Cooldown timer pattern** (used for resend email controls):
+```typescript
+const [cooldown, setCooldown] = useState(0);
+const RESEND_COOLDOWN = 30;
+
+useEffect(() => {
+  if (cooldown <= 0) return;
+  const timer = setInterval(() => setCooldown((s) => (s > 0 ? s - 1 : 0)), 1000);
+  return () => clearInterval(timer);
+}, [cooldown]);
+
+// After action completes
+setCooldown(RESEND_COOLDOWN);
+// Button disabled while cooldown > 0; shows "Resend in Ns"
+```
 
 ## Keyboard Interaction
 

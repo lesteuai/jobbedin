@@ -13,6 +13,7 @@
 ```
 /                           → Login page (public; 4 modes: signin, signup, forgot, delete)
 /reset-password             → Password reset form with token (public)
+/settings                   → User settings: password change, custom AI prompts (session-gated)
 /resumes                    → Resume list and management (session-gated API)
 /resumes/[id]               → Job analysis hub for resume (session-gated API)
 
@@ -25,7 +26,8 @@ API routes (all session-validated, userId-scoped):
 /api/jobs/[id]/analyze      → POST (trigger workflow, returns 202)
 /api/jobs/[id]/analysis     → GET (workflow results + process status, one-shot)
 /api/jobs/[id]/analysis-stream → GET (SSE: streams workflow results + process status every 1s)
-/api/jobs/[id]/chat         → GET (conversation history), POST (send message or clear)
+/api/jobs/[id]/chat         → GET (conversation history), POST (send message or clear, uses custom prompts)
+/api/settings               → GET (fetch custom AI prompts), PUT (upsert custom AI prompts)
 ```
 
 ## Data Flow
@@ -60,6 +62,28 @@ API routes (all session-validated, userId-scoped):
 - Submits via `authClient.resetPassword({newPassword, token})`
 - Shows success state with button back to sign in
 - Shows error state if token missing or reset fails
+
+### app/settings/page.tsx
+- Protected page for authenticated users; redirects to "/" if session missing
+- Two main sections: Change Password and Custom AI Instructions
+- **Change Password:** Requires current password + new password; calls `authClient.changePassword({currentPassword, newPassword})`; shows success/error messages
+- **Custom AI Instructions:** Two textareas for cover letter and recruiter message custom instructions
+  - Loads existing instructions on mount via GET /api/settings
+  - Saves on submit via PUT /api/settings with { customLetterInstructions, customMsgInstructions }
+  - Instructions are optional (leave blank to use defaults)
+  - Textarea height is fixed (5 rows, resize: none) per convention
+- All fields disabled during submission (passwordSaving, promptsSaving flags)
+
+### app/page.tsx (Login Page) — Resend Email Controls
+- Added `emailSent` state (true after successful signup/forgot/delete send)
+- Added `cooldown` state (30s countdown after each send)
+- Added `handleResend()` that re-sends based on current mode:
+  - `signup` → calls `authClient.sendVerificationEmail({email, callbackURL: '/'})`
+  - `forgot` → calls `authClient.requestPasswordReset({email, redirectTo: '/reset-password'})`
+  - `delete` → calls `authClient.deleteUser({password})` (reuses transient session from initial delete)
+- Resend link appears in footer when `EMAIL_ENABLED && emailSent`; shows "Resend in Ns" during cooldown (disabled while cooldown > 0)
+- Mode changes reset emailSent and cooldown to 0
+- All resend operations gated by EMAIL_ENABLED flag
 
 ### app/resumes/page.tsx
 - Resume list, selection, markdown preview
