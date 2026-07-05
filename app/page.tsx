@@ -6,6 +6,8 @@ import { authClient, useSession } from '@/app/lib/auth/client';
 import { YmButton } from '@/app/lib/components/ym/YmButton';
 import { useAppStore } from '@/app/lib/app-store';
 
+const EMAIL_ENABLED = process.env.EMAIL_ENABLED === 'true'
+
 type Mode = 'signin' | 'signup' | 'forgot' | 'delete';
 
 export default function LoginPage() {
@@ -91,7 +93,9 @@ export default function LoginPage() {
           } else {
             clearStore();
             setInfo(
-              'If confirmation is required, check your email to finish deleting your account. Otherwise your account has been deleted.'
+              EMAIL_ENABLED
+                ? 'Delete confirmation is sent to your email.'
+                : 'Your account has been deleted.'
             );
           }
         }
@@ -208,24 +212,12 @@ export default function LoginPage() {
                 <button type="button" onClick={() => setMode('forgot')} style={linkBtn}>
                   Forgot Password
                 </button>
-              </>
-            )}
-            {mode === 'signup' && (
-              <>
-                <button type="button" onClick={() => setMode('signin')} style={linkBtn}>
-                  Back to Sign In
-                </button>
                 <button type="button" onClick={() => setMode('delete')} style={linkBtn}>
                   Delete Account
                 </button>
               </>
             )}
-            {mode === 'forgot' && (
-              <button type="button" onClick={() => setMode('signin')} style={linkBtn}>
-                Back to Sign In
-              </button>
-            )}
-            {mode === 'delete' && (
+            {['signup', 'forgot', 'delete'].includes(mode) && (
               <button type="button" onClick={() => setMode('signin')} style={linkBtn}>
                 Back to Sign In
               </button>
