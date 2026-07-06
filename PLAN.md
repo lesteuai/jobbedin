@@ -50,5 +50,16 @@ Two features from `task.txt`:
 - [x] T5 (status: done, deps: T4) — Settings UI: BYOK section (saved-state indicator, save key, clear key) — files: `app/settings/page.tsx`
 - [x] T8 (status: done, deps: T3,T6,T7) — Surface out-of-credit: include `statusReason` in analysis-stream payload; ChatPanel + use-chat show the out-of-credit/Settings message — files: `app/api/jobs/[id]/analysis-stream/route.ts`, `app/lib/components/AnalysisReport.tsx`, `app/lib/components/ym/ChatPanel.tsx`, `app/resumes/[id]/page.tsx`, `app/lib/hooks/use-chat.ts`
 
-## Code Review
-_(appended in Phase 3)_
+## Code Review (medium)
+
+Findings:
+
+1. **[data-loss] Saving/clearing the API key can wipe custom instructions during the settings-load race** (`app/settings/page.tsx`). `handleSaveApiKey`/`handleClearApiKey` include `customLetterInstructions`/`customMsgInstructions` from state, and `PUT /api/settings` always overwrites those columns. Those values are `''` until the GET resolves, and the API key card renders before load completes. A save/clear before load returns overwrites existing instructions with empty strings.
+   - **Fix (T9):** make `PUT /api/settings` treat instruction fields with "leave unchanged unless present" semantics (same as the key), and stop sending instruction fields from the API key handlers.
+
+2. **[feature-gap] Out-of-credit leaves Letter/Message processes `pending` forever; SSE stream never closes and the out-of-credit message never shows on the Generate tab** (`app/lib/workflow.ts`). When all START nodes fail (the out-of-credit case), the dependent GenerateLetter/GenerateMsg nodes never run, so their rows stay `pending`; `analysis-stream` polls forever and ChatPanel shows "Generating..." indefinitely.
+   - **Fix (T10):** wrap `app.invoke` in `runWorkflow`; on failure, mark any still-non-terminal (`pending`/`processing`) process rows for the job as `failed`, carrying `out_of_credit` when `isOutOfCreditError`.
+
+### Follow-up tasks
+- [x] T9 (status: done, deps: none) — settings PUT: only update instruction fields when present in body; API key handlers stop sending instruction fields — files: `app/api/settings/route.ts`, `app/settings/page.tsx`
+- [x] T10 (status: done, deps: none) — workflow: mark leftover non-terminal processes failed when the graph run throws — files: `app/lib/workflow.ts`

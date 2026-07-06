@@ -106,11 +106,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          openrouterApiKey: apiKeyInput.trim(),
-          customLetterInstructions,
-          customMsgInstructions,
-        }),
+        body: JSON.stringify({ openrouterApiKey: apiKeyInput.trim() }),
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
@@ -133,11 +129,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clearOpenrouterApiKey: true,
-          customLetterInstructions,
-          customMsgInstructions,
-        }),
+        body: JSON.stringify({ clearOpenrouterApiKey: true }),
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
