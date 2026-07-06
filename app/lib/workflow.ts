@@ -23,7 +23,7 @@ import {
   ProcessType,
   ProcessStatus,
 } from '@/app/lib/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
   company_prompt,
   cross_reference_prompt,
@@ -393,13 +393,30 @@ export async function runWorkflow({
 
   const app = workflow.compile();
 
-  await app.invoke({
-    job: jobText,
-    resume: resumeText,
-    company_result: '',
-    JDMatch_result: '',
-    feedback_result: '',
-    cover_letter_result: '',
-    msg_result: '',
-  });
+  try {
+    await app.invoke({
+      job: jobText,
+      resume: resumeText,
+      company_result: '',
+      JDMatch_result: '',
+      feedback_result: '',
+      cover_letter_result: '',
+      msg_result: '',
+    });
+  } catch (error) {
+    // When an upstream node throws, its dependent nodes never run and their
+    // process rows stay pending/processing, so the analysis stream would poll
+    // forever. Force any leftover non-terminal rows to failed so the run reaches
+    // a terminal state, carrying the out-of-credit reason when it applies.
+    const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
+    await db
+      .update(processTable)
+      .set({ status: ProcessStatus.Failed, statusReason })
+      .where(
+        and(
+          eq(processTable.jobId, jobId),
+          inArray(processTable.status, [ProcessStatus.Pending, ProcessStatus.Processing])
+        )
+      );
+  }
 }
