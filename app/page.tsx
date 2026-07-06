@@ -128,7 +128,10 @@ export default function LoginPage() {
         if (signInResult.error) {
           setError('Invalid email or password');
         } else {
-          const result = await authClient.deleteUser({ password });
+          const result = await authClient.deleteUser({ 
+            password,
+            callbackURL: `${window.location.origin}/delete-user`
+          });
           if (result.error) {
             setError(result.error.message || 'Failed to delete account');
           } else {
@@ -179,7 +182,10 @@ export default function LoginPage() {
       } else if (mode === 'delete') {
         // The transient sign-in session from the initial delete still exists, so
         // re-calling deleteUser re-sends the confirmation without another sign-in.
-        const result = await authClient.deleteUser({ password });
+        const result = await authClient.deleteUser({ 
+          password,
+          callbackURL: `${window.location.origin}/delete-user`
+        });
         if (result.error) {
           setError(result.error.message || 'Failed to resend delete confirmation');
         } else {
