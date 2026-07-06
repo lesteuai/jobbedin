@@ -42,9 +42,9 @@ Two features from `task.txt`:
 - [x] T3 (status: done, deps: none) — Schema: add `openrouterApiKey` to `user_settings` and `statusReason` to `processes`; run `pnpm db:generate` only (no push) — files: `app/lib/db/schema.ts`, `drizzle/`
 
 ### Wave 2 (depend on Wave 1)
-- [ ] T4 (status: todo, deps: T1,T3) — Settings API: GET returns `hasOpenrouterApiKey`; PUT encrypts/stores key and supports clearing; keep instruction fields working — files: `app/api/settings/route.ts`
-- [ ] T6 (status: todo, deps: T1,T2,T3) — workflow.ts: load+decrypt user key, build LLMs via factories, detect out-of-credit in node catch blocks and persist `statusReason` — files: `app/lib/workflow.ts`
-- [ ] T7 (status: todo, deps: T1,T2,T3) — chat route: load+decrypt user key, build writing LLM via factory, catch out-of-credit and return a specific 402 error message — files: `app/api/jobs/[id]/chat/route.ts`
+- [x] T4 (status: done, deps: T1,T3) — Settings API: GET returns `hasOpenrouterApiKey`; PUT encrypts/stores key and supports clearing; keep instruction fields working — files: `app/api/settings/route.ts`
+- [x] T6 (status: done, deps: T1,T2,T3) — workflow.ts: load+decrypt user key, build LLMs via factories, detect out-of-credit in node catch blocks and persist `statusReason` — files: `app/lib/workflow.ts`
+- [x] T7 (status: done, deps: T1,T2,T3) — chat route: load+decrypt user key, build writing LLM via factory, catch out-of-credit and return a specific 402 error message — files: `app/api/jobs/[id]/chat/route.ts`
 
 ### Wave 3 (depend on Wave 2)
 - [ ] T5 (status: todo, deps: T4) — Settings UI: BYOK section (saved-state indicator, save key, clear key) — files: `app/settings/page.tsx`
