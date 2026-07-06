@@ -1,40 +1,54 @@
-# Plan: Resend email controls on the login page
+# Plan: Detect OpenRouter out-of-credit + Bring Your Own Key (BYOK)
 
-## Context / Feasibility
+## Context
 
-All auth screens live in a single file: `app/page.tsx` (mode-based: `signin | signup | forgot | delete`).
-The auth client (`app/lib/auth/client.ts`) already exposes everything needed. Server handlers in
-`app/lib/auth/index.ts` are already wired. `sendEmail` is a no-op when `EMAIL_ENABLED` is false
-(`app/lib/email.ts:45`), so every resend control is gated by `EMAIL_ENABLED`.
+Two features from `task.txt`:
 
-- **Signup verify** — feasible. `authClient.sendVerificationEmail({ email, callbackURL: '/' })`.
-  Email is retained in state after signup (mode change clears password only).
-- **Forgot** — feasible. Re-call `authClient.requestPasswordReset(...)`. No dedicated resend endpoint exists; resend == re-submit.
-- **Delete** — feasible only when `EMAIL_ENABLED`. Re-call `authClient.deleteUser({ password })`.
-  The transient sign-in session persists after the first call (account not deleted until confirmed), so no re-sign-in. email+password stay in state in delete mode.
+1. **Detect OpenRouter out-of-credit lockup.** OpenRouter signals insufficient credit
+   with an `APIError` whose status/code is `402` (shape confirmed in `scripts/test-llm.ts`:
+   `error?.constructor?.name === 'APIError'`, `error.code === 402`). LLM calls happen in
+   two places: the async LangGraph workflow (`app/lib/workflow.ts`) and the synchronous
+   chat refinement route (`app/api/jobs/[id]/chat/route.ts`). Both must recognize this
+   condition and surface a clear "out of credit" message instead of a generic failure.
 
-## Design
+2. **Bring Your Own Key.** Let a user store their own OpenRouter API key in Settings so
+   they use their own credit. The key is encrypted with `BETTER_AUTH_SECRET` before being
+   written to `user_settings`, and decrypted with the same secret before each LLM call.
+   When a user key is present it overrides `process.env.OPENROUTER_API_KEY`.
 
-- Add an `emailSent` boolean state, set `true` after a successful signup / forgot-send / delete-send,
-  reset to `false` in `handleModeChange`.
-- Add a single `handleResend()` that resends based on current `mode`:
-  - `signin` (post-signup) → `sendVerificationEmail`
-  - `forgot` → `requestPasswordReset`
-  - `delete` → `deleteUser`
-- Render a "Resend ..." link in the footer when `EMAIL_ENABLED && emailSent`, with mode-specific label.
-- Cooldown: a `cooldown` seconds state (start at 30 after every successful send, including the initial
-  signup/forgot/delete send and each resend), decremented by a `useEffect` interval. The resend link is
-  disabled while `loading || cooldown > 0` and shows "Resend in Ns" during the countdown.
+**Constraint:** generate the Drizzle migration only. Do NOT run `pnpm db:push`.
+
+## Design notes
+
+- New `app/lib/crypto.ts`: `encrypt(plaintext)` / `decrypt(payload)` using AES-256-GCM with
+  a 32-byte key derived from `BETTER_AUTH_SECRET` (sha256). Output format `iv:authTag:ciphertext`.
+- New `app/lib/openrouter.ts`: `isOutOfCreditError(error): boolean` (APIError + 402), plus
+  factory functions `createReasoningLlm(apiKey?)` / `createWritingLlm(apiKey?)` that build a
+  `ChatOpenAI` from the given key, falling back to `process.env.OPENROUTER_API_KEY`. Module-level
+  singleton LLMs are replaced by these factories so a per-user key can be injected.
+- Schema: add `openrouterApiKey` (encrypted) to `user_settings`; add `statusReason` to `processes`
+  so the async workflow can persist WHY a node failed (e.g. `out_of_credit`) for the SSE stream/UI.
+- Settings API never returns the raw key; GET returns `hasOpenrouterApiKey: boolean`. PUT accepts
+  the key (encrypt + store) and supports clearing it.
+- UI surfacing: the analysis SSE payload carries `statusReason`; ChatPanel shows an out-of-credit
+  message pointing to Settings. Chat route returns a 402 with a specific message that `use-chat`
+  displays verbatim.
 
 ## Tasks
-- [x] T1 (status: done, deps: none) — Add `emailSent` state + `cooldown` timer + `handleResend()` + resend links for signup-verify, forgot, and delete; gate all by `EMAIL_ENABLED`. — files: app/page.tsx
+
+### Wave 1 (independent)
+- [x] T1 (status: done, deps: none) — Add `crypto.ts` encrypt/decrypt helpers keyed off `BETTER_AUTH_SECRET` (AES-256-GCM) — files: `app/lib/crypto.ts`
+- [x] T2 (status: done, deps: none) — Add `openrouter.ts` with `isOutOfCreditError` and `createReasoningLlm` / `createWritingLlm` factories — files: `app/lib/openrouter.ts`
+- [x] T3 (status: done, deps: none) — Schema: add `openrouterApiKey` to `user_settings` and `statusReason` to `processes`; run `pnpm db:generate` only (no push) — files: `app/lib/db/schema.ts`, `drizzle/`
+
+### Wave 2 (depend on Wave 1)
+- [ ] T4 (status: todo, deps: T1,T3) — Settings API: GET returns `hasOpenrouterApiKey`; PUT encrypts/stores key and supports clearing; keep instruction fields working — files: `app/api/settings/route.ts`
+- [ ] T6 (status: todo, deps: T1,T2,T3) — workflow.ts: load+decrypt user key, build LLMs via factories, detect out-of-credit in node catch blocks and persist `statusReason` — files: `app/lib/workflow.ts`
+- [ ] T7 (status: todo, deps: T1,T2,T3) — chat route: load+decrypt user key, build writing LLM via factory, catch out-of-credit and return a specific 402 error message — files: `app/api/jobs/[id]/chat/route.ts`
+
+### Wave 3 (depend on Wave 2)
+- [ ] T5 (status: todo, deps: T4) — Settings UI: BYOK section (saved-state indicator, save key, clear key) — files: `app/settings/page.tsx`
+- [ ] T8 (status: todo, deps: T3,T6,T7) — Surface out-of-credit: include `statusReason` in analysis-stream payload; ChatPanel + use-chat show the out-of-credit/Settings message — files: `app/api/jobs/[id]/analysis-stream/route.ts`, `app/lib/components/ym/ChatPanel.tsx`, `app/resumes/[id]/page.tsx`, `app/lib/hooks/use-chat.ts`
 
 ## Code Review
-
-`/code-review medium` — no actionable findings.
-
-- State (`email`/`password`) is retained across mode transitions, so all resend calls have their inputs.
-- Post-signup `handleModeChange('signin')` + `setEmailSent(true)` batches to a consistent final state.
-- Delete resend relies on the transient session persisting after the first `deleteUser` call (documented in-code).
-- Conventions (CLAUDE.md): no em dashes in comments/commit, minimal comments, correct commit authorship.
-- Non-blocking: the `mode === 'signup'` branch in `handleResend` is defensive/dead (button only surfaces in `signin` post-signup); harmless, left as-is.
+_(appended in Phase 3)_
