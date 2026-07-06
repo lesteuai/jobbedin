@@ -113,11 +113,9 @@ export default function LoginPage() {
         if (result.error) {
           setError(result.error.message || 'Failed to send reset link');
         } else {
-          if (EMAIL_ENABLED) {
-            setInfo('Check your email for a link to reset your password.');
-            setEmailSent(true);
-            setCooldown(RESEND_COOLDOWN);
-          }
+          setInfo('Check your email for a link to reset your password.');
+          setEmailSent(true);
+          setCooldown(RESEND_COOLDOWN);
         }
       } else if (mode === 'delete') {
         if (!window.confirm('Permanently delete this account and all its data? This cannot be undone.')) {

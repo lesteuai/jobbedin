@@ -43,7 +43,7 @@ export async function sendEmail({
   text: string;
 }): Promise<void> {
   if (!EMAIL_ENABLED) {
-    console.log(`[email disabled] to=${to} subject=${subject}`);
+    console.log(`\n[email disabled]\nTo=${to}\nSubject=${subject}\n\n${text}`);
     return;
   }
 
