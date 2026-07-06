@@ -28,16 +28,16 @@ Located in `app/lib/db/schema.ts`. Uses PostgreSQL with Drizzle ORM for type-saf
 - `message_gen_history` — Generated recruiter messages + chat refinement history
   - jobId (UUID PK, FK to resume_jobs), userId, conversation (JSON array of ChatLine[]), createdAt, updatedAt
 - `processes` — Workflow node status tracking
-  - id (UUID PK), userId, jobId (FK to resume_jobs), processType (text), status (text: pending|processing|done|failed), createdAt, updatedAt
-- `user_settings` — Per-user AI generation preferences
-  - userId (text PK, FK to user), customLetterInstructions (text), customMsgInstructions (text), createdAt, updatedAt
+  - id (UUID PK), userId, jobId (FK to resume_jobs), processType (text), status (text: pending|processing|done|failed), statusReason (text, nullable: 'out_of_credit'), createdAt, updatedAt
+- `user_settings` — Per-user AI generation preferences and API key storage
+  - userId (text PK, FK to user), customLetterInstructions (text), customMsgInstructions (text), openrouterApiKey (text, nullable, encrypted with AES-256-GCM), createdAt, updatedAt
 
 **Key constraints:**
 - All non-auth tables have userId FK (user.id) and $onUpdate timestamps
 - All job-related records reference resume_jobs.id via jobId
-- process table tracks 5 node types: 'company', 'jdmatch', 'feedback', 'letter', 'message'
+- process table tracks 5 node types: 'company', 'jdmatch', 'feedback', 'letter', 'message'; statusReason set to 'out_of_credit' when HTTP 402 occurs
 - cover_letter_history and message_gen_history use jobId as PK (one record per job)
-- user_settings uses userId as PK (one record per user); custom prompts are optional (null if not set)
+- user_settings uses userId as PK (one record per user); custom prompts and API key are optional (null if not set); openrouterApiKey stored encrypted
 
 ## Database Client (app/lib/db/index.ts)
 
@@ -203,3 +203,74 @@ Checked in `app/lib/db/index.ts` with early error throw.
 
 Missing OPENROUTER_API_KEY causes silent failures in workflow; process status set to Failed without client error message.
 Missing TAVILY_API_KEY causes ResearchCompany node to fail silently.
+
+**Bring Your Own OpenRouter Key (BYOK):**
+- BETTER_AUTH_SECRET now also used to derive encryption key (SHA256) for storing user API keys
+- If not set, app crashes on startup when attempting to encrypt/decrypt
+- Per-user keys stored in user_settings.openrouterApiKey as AES-256-GCM encrypted payloads
+- Fallback: if user key absent or decrypt fails, workflow/chat routes use process.env.OPENROUTER_API_KEY
+- User-set key always used exclusively if present (no fallback on 402 error)
+
+## Settings API (app/api/settings/route.ts)
+
+**GET** — Returns current user settings:
+```json
+{
+  "customLetterInstructions": "...",
+  "customMsgInstructions": "...",
+  "hasOpenrouterApiKey": boolean
+}
+```
+Note: `hasOpenrouterApiKey` is boolean only; raw encrypted key never returned to client.
+
+**PUT** — Updates user settings (partial; only updates fields present in body):
+```json
+// Example: update instructions without touching API key
+{
+  "customLetterInstructions": "...",
+  "customMsgInstructions": "..."
+}
+
+// Example: save API key (encrypted server-side)
+{
+  "openrouterApiKey": "sk-or-..."
+}
+
+// Example: clear saved API key
+{
+  "clearOpenrouterApiKey": true
+}
+```
+
+**Behavior:**
+- Only fields present in request body are updated (partial update semantics)
+- Saving API key does not clobber custom instructions; vice versa
+- openrouterApiKey trimmed and encrypted before storage
+- Upsert pattern: insert with defaults if row missing, else update only specified fields
+- If no fields to update (empty body), returns 200 with no changes
+
+## Encryption (app/lib/crypto.ts)
+
+**Provider:** Node.js crypto module (standard library)
+**Algorithm:** AES-256-GCM
+**Key derivation:** SHA256(BETTER_AUTH_SECRET)
+**IV:** 12-byte random per encryption
+**Format:** `${iv.toString('hex')}:${authTag.toString('hex')}:${ciphertext.toString('hex')}`
+
+**Functions:**
+- `encrypt(plaintext: string): string` — Returns encrypted payload
+- `decrypt(payload: string): string` — Parses encrypted payload, decrypts, returns plaintext
+- Throws on malformed payload or auth tag mismatch
+
+**Usage in workflow and chat:**
+```typescript
+let userApiKey: string | undefined;
+try {
+  userApiKey = userSettingsRow?.openrouterApiKey
+    ? decrypt(userSettingsRow.openrouterApiKey)
+    : undefined;
+} catch (error) {
+  console.error('Failed to decrypt user OpenRouter API key:', error);
+  userApiKey = undefined;  // Fallback to server key
+}
+```
