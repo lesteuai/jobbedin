@@ -47,8 +47,8 @@ Two features from `task.txt`:
 - [x] T7 (status: done, deps: T1,T2,T3) — chat route: load+decrypt user key, build writing LLM via factory, catch out-of-credit and return a specific 402 error message — files: `app/api/jobs/[id]/chat/route.ts`
 
 ### Wave 3 (depend on Wave 2)
-- [ ] T5 (status: todo, deps: T4) — Settings UI: BYOK section (saved-state indicator, save key, clear key) — files: `app/settings/page.tsx`
-- [ ] T8 (status: todo, deps: T3,T6,T7) — Surface out-of-credit: include `statusReason` in analysis-stream payload; ChatPanel + use-chat show the out-of-credit/Settings message — files: `app/api/jobs/[id]/analysis-stream/route.ts`, `app/lib/components/ym/ChatPanel.tsx`, `app/resumes/[id]/page.tsx`, `app/lib/hooks/use-chat.ts`
+- [x] T5 (status: done, deps: T4) — Settings UI: BYOK section (saved-state indicator, save key, clear key) — files: `app/settings/page.tsx`
+- [x] T8 (status: done, deps: T3,T6,T7) — Surface out-of-credit: include `statusReason` in analysis-stream payload; ChatPanel + use-chat show the out-of-credit/Settings message — files: `app/api/jobs/[id]/analysis-stream/route.ts`, `app/lib/components/AnalysisReport.tsx`, `app/lib/components/ym/ChatPanel.tsx`, `app/resumes/[id]/page.tsx`, `app/lib/hooks/use-chat.ts`
 
 ## Code Review
 _(appended in Phase 3)_

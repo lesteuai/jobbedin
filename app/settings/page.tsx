@@ -28,6 +28,10 @@ export default function SettingsPage() {
   const [promptsSaving, setPromptsSaving] = useState(false);
   const [promptsSuccess, setPromptsSuccess] = useState(false);
 
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeySaving, setApiKeySaving] = useState(false);
+
   useEffect(() => {
     async function loadSettings() {
       try {
@@ -39,6 +43,7 @@ export default function SettingsPage() {
         const data = await res.json();
         setCustomLetterInstructions(data.customLetterInstructions ?? '');
         setCustomMsgInstructions(data.customMsgInstructions ?? '');
+        setHasApiKey(Boolean(data.hasOpenrouterApiKey));
       } catch {
         showError('Failed to load settings.');
       } finally {
@@ -91,6 +96,60 @@ export default function SettingsPage() {
       showError('Failed to save prompt settings. Please try again.');
     } finally {
       setPromptsSaving(false);
+    }
+  }
+
+  async function handleSaveApiKey() {
+    setApiKeySaving(true);
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          openrouterApiKey: apiKeyInput.trim(),
+          customLetterInstructions,
+          customMsgInstructions,
+        }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        showError(json?.error ?? 'Failed to save API key');
+        return;
+      }
+      setHasApiKey(true);
+      setApiKeyInput('');
+    } catch {
+      showError('Failed to save API key. Please try again.');
+    } finally {
+      setApiKeySaving(false);
+    }
+  }
+
+  async function handleClearApiKey() {
+    setApiKeySaving(true);
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clearOpenrouterApiKey: true,
+          customLetterInstructions,
+          customMsgInstructions,
+        }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        showError(json?.error ?? 'Failed to clear API key');
+        return;
+      }
+      setHasApiKey(false);
+      setApiKeyInput('');
+    } catch {
+      showError('Failed to clear API key. Please try again.');
+    } finally {
+      setApiKeySaving(false);
     }
   }
 
@@ -193,6 +252,53 @@ export default function SettingsPage() {
                 </YmButton>
               </form>
             )}
+          </div>
+
+          <div className="ym-inset" style={{ padding: 16 }}>
+            <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 4 }}>OpenRouter API Key</div>
+            <div style={{ fontSize: 11, color: 'oklch(0.5 0.02 295)', marginBottom: 10 }}>
+              Use your own OpenRouter key so generation runs on your credit. Stored encrypted. Leave the shared key in
+              place by not entering anything.
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {hasApiKey ? (
+                <div style={{ fontSize: 12, color: 'oklch(0.5 0.15 145)' }}>A key is saved.</div>
+              ) : (
+                <div style={{ fontSize: 12, color: 'oklch(0.5 0.02 295)' }}>
+                  No key saved. Using the shared server key.
+                </div>
+              )}
+
+              <label style={{ fontSize: 12 }}>
+                OpenRouter API Key
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  className="ym-input"
+                  style={{ marginTop: 4, width: '100%' }}
+                  placeholder="sk-or-..."
+                  disabled={apiKeySaving}
+                />
+              </label>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <YmButton
+                  type="button"
+                  variant="primary"
+                  disabled={apiKeySaving || apiKeyInput.trim().length === 0}
+                  onClick={handleSaveApiKey}
+                >
+                  {apiKeySaving ? 'Saving...' : 'Save Key'}
+                </YmButton>
+                {hasApiKey && (
+                  <YmButton type="button" disabled={apiKeySaving} onClick={handleClearApiKey}>
+                    Clear Key
+                  </YmButton>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
