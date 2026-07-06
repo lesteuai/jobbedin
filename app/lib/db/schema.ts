@@ -196,6 +196,7 @@ export const process = pgTable('processes', {
     .references(() => resumeJob.id, {onDelete: 'cascade'}),
   processType: text('process_type').notNull(),
   status: text('status').notNull().default(ProcessStatus.Pending),
+  statusReason: text('status_reason'),
 	createdAt: timestamp('created_at').defaultNow(),
 	updatedAt: timestamp('updated_at')
     .$onUpdate(() => new Date())
@@ -208,6 +209,7 @@ export const userSettings = pgTable('user_settings', {
     .references(() => user.id, { onDelete: 'cascade' }),
   customLetterInstructions: text('custom_letter_instructions'),
   customMsgInstructions: text('custom_msg_instructions'),
+  openrouterApiKey: text('openrouter_api_key'),
 	createdAt: timestamp('created_at').defaultNow(),
 	updatedAt: timestamp('updated_at')
     .$onUpdate(() => new Date())
