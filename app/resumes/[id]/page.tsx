@@ -31,7 +31,7 @@ export default function ResumesJobsPage() {
     feedback: string | null;
   } | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [processStatuses, setProcessStatuses] = useState<Array<{ processType: string; status: string }>>([]);
+  const [processStatuses, setProcessStatuses] = useState<Array<{ processType: string; status: string; statusReason?: string | null }>>([]);
   const esRef = useRef<EventSource | null>(null);
   const [tab, setTab] = useState<Tab>('Company');
   const chat = useChat(selectedJobId, tab);
@@ -67,6 +67,9 @@ export default function ResumesJobsPage() {
 
   const getProcessStatus = (type: string) =>
     processStatuses.find((p) => p.processType === type)?.status ?? null;
+
+  const getProcessReason = (type: string) =>
+    processStatuses.find((p) => p.processType === type)?.statusReason ?? null;
 
   const handleSelect = async (id: string) => {
     setDraft('');
@@ -186,6 +189,7 @@ export default function ResumesJobsPage() {
             setTab={setTab}
             analysisData={analysisData}
             getProcessStatus={getProcessStatus}
+            getProcessReason={getProcessReason}
             onBack={() => setView('view')}
             chat={chat}
           />

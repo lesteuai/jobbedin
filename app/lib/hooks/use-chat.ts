@@ -84,7 +84,10 @@ export function useChat(selectedJobId: string | null | undefined, tab: string) {
         body: JSON.stringify({ mode, userMessage }),
       });
 
-      if (!res.ok) throw new Error('Failed to send message');
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json?.error ?? 'Failed to send message');
+      }
 
       const data = await res.json();
       setChats((p) => ({ ...p, [mode]: [...p[mode], { role: 'ai', text: data.reply }] }));
