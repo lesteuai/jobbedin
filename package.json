@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next telemetry disable && next build",
+    "build": "next telemetry disable && next build && npm run db:migrate",
     "start": "next start",
     "deploy-dev": "vercel",
     "lint": "eslint",
