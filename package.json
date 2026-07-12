@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next telemetry disable && next build && npm run db:migrate",
+    "build": "next telemetry disable && next build",
     "start": "next start",
     "deploy-dev": "vercel",
     "lint": "eslint",
@@ -39,7 +39,7 @@
     "remark-math": "^6.0.0",
     "tailwind-merge": "^3.5.0",
     "tsx": "^4.22.1",
-    "vercel": "^54.2.0",
+    "vercel": "^54.21.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
