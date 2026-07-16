@@ -1,0 +1,7 @@
+app/api/settings/route.ts:
+- See if there is a way to check for existence of apiKey instead of pulling it. Within one query if possible.
+- openrouterApiKey in the insert phase should not exist if
++ there is no change to the api Key
++ only null if it is asked to clear key. right now, saving settings will reset openrouterApiKey to null
+app/lib/openrouter.ts:
+- decrypt api key in here instead of sending key from outside to create LLM
