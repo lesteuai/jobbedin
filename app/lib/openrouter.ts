@@ -17,7 +17,7 @@ export function createReasoningLlm(encryptedApiKey?: string | null): ChatOpenAI 
   return new ChatOpenAI({
     modelName: process.env.REASONING_MODEL ?? 'meta-llama/llama-3.1-8b-instruct',
     temperature: 0,
-    maxTokens: 2048,
+    maxTokens: 4096,
     modelKwargs: { frequency_penalty: 0.3 },
     apiKey: resolveApiKey(encryptedApiKey),
     configuration: { baseURL: 'https://openrouter.ai/api/v1' },
@@ -28,7 +28,7 @@ export function createWritingLlm(encryptedApiKey?: string | null): ChatOpenAI {
   return new ChatOpenAI({
     modelName: process.env.WRITING_MODEL ?? 'meta-llama/llama-3.1-8b-instruct',
     temperature: 0.7,
-    maxTokens: 2048,
+    maxTokens: 4096,
     modelKwargs: { frequency_penalty: 0.3 },
     apiKey: resolveApiKey(encryptedApiKey),
     configuration: { baseURL: 'https://openrouter.ai/api/v1' },
