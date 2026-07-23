@@ -35,8 +35,30 @@ import {
   createReasoningLlm,
   createWritingLlm,
   isOutOfCreditError,
+  isAuthError,
 } from '@/app/lib/openrouter';
-import { decrypt } from '@/app/lib/crypto';
+import { STATUS_REASON } from '@/app/lib/constants';
+
+function resolveStatusReason(error: unknown): string | null {
+  if (isOutOfCreditError(error)) return STATUS_REASON.OUT_OF_CREDIT;
+  if (isAuthError(error)) return STATUS_REASON.INVALID_API_KEY;
+  return null;
+}
+
+// Detects degenerate LLM output: empty text, runs of replacement/control
+// characters, or a short sequence repeated for an unusually long stretch.
+function isGibberish(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return true;
+
+  const badChars = trimmed.match(/[�\x00-\x08\x0B\x0C\x0E-\x1F]/g);
+  if (badChars && badChars.length / trimmed.length > 0.05) return true;
+
+  if (/(.)\1{39,}/.test(trimmed)) return true;
+  if (/(.{2,4})\1{15,}/.test(trimmed)) return true;
+
+  return false;
+}
 
 interface WorkflowParams {
   jobId: string;
@@ -96,18 +118,8 @@ export async function runWorkflow({
     .where(eq(userSettings.userId, userId))
     .then((rows) => rows[0]);
 
-  let userApiKey: string | undefined;
-  try {
-    userApiKey = userSettingsRow?.openrouterApiKey
-      ? decrypt(userSettingsRow.openrouterApiKey)
-      : undefined;
-  } catch (error) {
-    console.error('Failed to decrypt user OpenRouter API key:', error);
-    userApiKey = undefined;
-  }
-
-  const reasoningLlm = createReasoningLlm(userApiKey);
-  const writingLlm = createWritingLlm(userApiKey);
+  const reasoningLlm = createReasoningLlm(userSettingsRow?.openrouterApiKey);
+  const writingLlm = createWritingLlm(userSettingsRow?.openrouterApiKey);
 
   const run_ResearchCompany = async (state: typeof AgentState.State) => {
     try {
@@ -117,7 +129,7 @@ export async function runWorkflow({
         messageModifier: new SystemMessage(company_prompt),
       });
 
-      const res = await researchAgent.invoke({
+      const researchInput = {
         messages: [
           {
             role: 'user',
@@ -126,9 +138,18 @@ export async function runWorkflow({
               state.job,
           },
         ],
-      });
+      };
 
-      const content = String(res.messages[res.messages.length - 1].content);
+      const res = await researchAgent.invoke(researchInput);
+      let content = String(res.messages[res.messages.length - 1].content);
+
+      if (isGibberish(content)) {
+        const retryRes = await researchAgent.invoke(researchInput);
+        content = String(retryRes.messages[retryRes.messages.length - 1].content);
+        if (isGibberish(content)) {
+          throw new Error('ResearchCompany produced unusable output');
+        }
+      }
 
       await db.insert(company).values({
         id: randomUUID(),
@@ -149,7 +170,7 @@ export async function runWorkflow({
 
       return { company_result: content };
     } catch (error) {
-      const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
+      const statusReason = resolveStatusReason(error);
       await db
         .update(processTable)
         .set({ status: ProcessStatus.Failed, statusReason })
@@ -172,10 +193,15 @@ export async function runWorkflow({
         ),
       ]);
       const chain = prompt.pipe(reasoningLlm).pipe(parser);
-      const result = await chain.invoke({
-        job: state.job,
-        resume: state.resume,
-      });
+      const chainInput = { job: state.job, resume: state.resume };
+      let result = await chain.invoke(chainInput);
+
+      if (isGibberish(result)) {
+        result = await chain.invoke(chainInput);
+        if (isGibberish(result)) {
+          throw new Error('CrossRef produced unusable output');
+        }
+      }
 
       await db.insert(jobDescriptionMatch).values({
         id: randomUUID(),
@@ -196,7 +222,7 @@ export async function runWorkflow({
 
       return { JDMatch_result: result };
     } catch (error) {
-      const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
+      const statusReason = resolveStatusReason(error);
       await db
         .update(processTable)
         .set({ status: ProcessStatus.Failed, statusReason })
@@ -240,7 +266,7 @@ export async function runWorkflow({
 
       return { feedback_result: result };
     } catch (error) {
-      const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
+      const statusReason = resolveStatusReason(error);
       await db
         .update(processTable)
         .set({ status: ProcessStatus.Failed, statusReason })
@@ -300,7 +326,7 @@ export async function runWorkflow({
 
       return { cover_letter_result: result };
     } catch (error) {
-      const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
+      const statusReason = resolveStatusReason(error);
       await db
         .update(processTable)
         .set({ status: ProcessStatus.Failed, statusReason })
@@ -360,7 +386,7 @@ export async function runWorkflow({
 
       return { msg_result: result };
     } catch (error) {
-      const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
+      const statusReason = resolveStatusReason(error);
       await db
         .update(processTable)
         .set({ status: ProcessStatus.Failed, statusReason })
@@ -408,7 +434,7 @@ export async function runWorkflow({
     // process rows stay pending/processing, so the analysis stream would poll
     // forever. Force any leftover non-terminal rows to failed so the run reaches
     // a terminal state, carrying the out-of-credit reason when it applies.
-    const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
+    const statusReason = resolveStatusReason(error);
     await db
       .update(processTable)
       .set({ status: ProcessStatus.Failed, statusReason })
