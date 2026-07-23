@@ -28,7 +28,7 @@ Writes results to `company` table.
 - Requires TAVILY_API_KEY env var
 
 **Quality assurance:**
-- Generated content checked for gibberish via isGibberish(text) heuristic (detects excessive repetition, low token diversity)
+- Generated content checked for gibberish via `isGibberish(text)` heuristic (detects excessive repetition, low token diversity); exported as named export from workflow.ts for testability
 - If gibberish detected, generation is retried once
 - If still degenerate after retry, node fails with statusReason; gibberish is never persisted
 
@@ -167,7 +167,7 @@ process {
 **Error detection and status resolution** — In each node's catch block:
 ```typescript
 catch (error) {
-  const statusReason = resolveStatusReason(error);  // Returns OUT_OF_CREDIT or INVALID_API_KEY or null
+  const statusReason = resolveStatusReason(error);  // Returns OUT_OF_CREDIT or INVALID_API_KEY or null; exported as named export from workflow.ts
   await db.update(processTable).set({ status: ProcessStatus.Failed, statusReason });
   throw error;  // Propagate to workflow.invoke() catch
 }

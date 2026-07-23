@@ -184,6 +184,29 @@ Yahoo Messenger design expects keyboard-friendly navigation:
 - Tab order implicit (DOM order)
 - In chat input: Enter sends, Shift+Enter for newline
 
+## Testing Conventions
+
+See [Unit Testing & Vitest](testing.md) for comprehensive testing documentation.
+
+**Test file organization:** Colocate test files with code they cover
+- `app/lib/crypto.ts` paired with `app/lib/crypto.test.ts` (same directory)
+- `app/api/settings/route.ts` paired with `app/api/settings/route.test.ts`
+- Shared mocks and utilities live in `test/` only
+
+**Environment split:**
+- `*.test.ts` files run in node environment (backend/API routes)
+- `*.test.tsx` files run in jsdom (React components)
+- Configuration and setup in `vitest.config.ts`, `vitest.setup.ts`, `vitest.setup.dom.ts`
+
+**Database mocking:** Route tests mock `@/app/lib/db` using `createDbMock()` from `test/db-mock.ts`
+- Queue results with `db.queueResult(...)`
+- Inspect recorded queries via `db.calls.select`, `db.calls.insert`, `db.calls.delete`
+- Use `equalityComparisons(clause)` to assert user-scoping in where clauses
+
+**Component testing:** Use `renderWithStore()` from `test/render.tsx` for context-dependent components
+
+**Request testing:** Use `makeJsonRequest()` from `test/next-request.ts` to construct real NextRequest objects for route tests
+
 ## Comment Guidelines
 
 **Default: No comments.** Code should be self-explanatory via clear naming.

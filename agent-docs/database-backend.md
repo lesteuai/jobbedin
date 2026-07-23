@@ -101,6 +101,21 @@ export const GET = handleAsyncAuth(async (request, session) => {
 
 **Pattern:** All `/api/settings` and most new routes use `handleAsyncAuth` to enforce session validation at the wrapper level rather than per-route.
 
+## API Route Testing
+
+Route tests mock `@/app/lib/db` using `createDbMock()` from `test/db-mock.ts`. This avoids hitting a real PostgreSQL database.
+
+**Asserting user-scoping:** Use the `equalityComparisons(clause)` helper to flatten a Drizzle where clause into the `{ column, value }` pairs it filters on, where `column` is the database column name. Assert against the clause the route actually passed:
+
+```typescript
+const comparisons = equalityComparisons(dbMock.calls.select.at(-1)?.where[0]);
+expect(comparisons).toContainEqual({ column: 'user_id', value: 'user-1' });
+```
+
+Assert the real clause rather than checking that a where clause merely exists. `expect(where[0]).toBeDefined()` passes even when the userId filter has been deleted, which would leak another user's rows.
+
+See [Unit Testing & Vitest](testing.md) for comprehensive testing documentation and `createDbMock()` API details.
+
 ## Migrations
 
 Located in `drizzle/` directory. Tracked as SQL files.

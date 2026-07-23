@@ -305,6 +305,25 @@ Example:
 3. Verify content-type header is application/json
 4. Check network response status (should be 200 with `{ "success": true }`)
 
+## Unit Testing Limitations
+
+### jsdom Layout Engine
+
+jsdom does not have a layout engine. Tests cannot assert:
+- `scrollHeight`, `clientHeight`, `offsetHeight` (always 0)
+- `scrollTop`, `scrollLeft` (always 0)
+- Computed dimensions or positioning
+
+**Gotcha for useChat:** The hook's scroll-to-bottom effect assigns `scrollTop = scrollHeight` on the chat container. Both read as 0 under jsdom, so the effect runs without throwing but its result cannot be asserted. `use-chat.test.tsx` tests the surrounding state behavior and leaves the scroll position unverified.
+
+### isGibberish Boundary
+
+`isGibberish(text)` checks two repetition patterns:
+- `/(.)\1{39,}/` matches one character repeated 40 or more times
+- `/(.{2,4})\1{15,}/` matches a 2-to-4 character sequence repeated 16 or more times
+
+Reading the first regex alone suggests a run of one character trips the check at 40. It trips at 32, because a 32-character run of the same character is also "aa" repeated 16 times and satisfies the second pattern first. `workflow.test.ts` pins the real boundary at 31 characters false and 32 true.
+
 ## Architecture Evolution Notes
 
 - Next.js App Router migration completed
@@ -322,3 +341,4 @@ Example:
 - Bring Your Own OpenRouter Key (BYOK) added: users can store encrypted API key in user_settings; LLM factories support per-user keys with fallback to server key
 - Encryption module added (crypto.ts): AES-256-GCM with key derived from BETTER_AUTH_SECRET
 - Settings API refactored: PUT supports partial updates to preserve unmodified fields (e.g., saving API key doesn't clobber custom prompts)
+- Unit test suite added: Vitest with colocated test files and a two-project config for the node and jsdom environments

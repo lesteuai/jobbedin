@@ -1,7 +1,7 @@
 # Plan: Unit tests
 
 Request: unit tests (including React components and hooks)
-Status: in progress
+Status: complete
 
 ## Context
 
@@ -130,7 +130,26 @@ This plan covers the pure logic and request-handling branches that carry real ri
 
 ### Wave 5
 
-- [ ] T12: README testing section and full-suite verification
+- [x] T12: README testing section and full-suite verification (commit fa13546)
   - Files: `README.md`
   - Do: add a short "Testing" section documenting `pnpm test`, `pnpm test:watch`, and `pnpm test:coverage`, and stating the layout convention: tests are colocated, `*.test.ts` runs in Node and `*.test.tsx` in jsdom, with shared mocks and render helpers in `test/`. Match the existing README tone and heading style. Then run the full suite and `pnpm lint` and report the result.
   - Done when: the section renders correctly, the commands match `package.json`, and the whole suite passes.
+
+## Code Review (medium)
+
+Reviewed by mutation testing: source invariants were deliberately broken and the suite re-run to confirm the tests fail. Caught correctly on the first pass were the settings partial-update guarantee, the `isGibberish` bad-character threshold, the `NotFoundException` status mapping, the analyze route's initial process statuses, the `AnalysisReport` letter-over-message failure preference, the `useChat` optimistic-line rollback, and the `AppStore` selection reset on delete.
+
+- `app/api/jobs/route.test.ts:49`, `app/api/resumes/route.test.ts:59` — user-scoping was never actually verified. Both tests named user scoping in their titles but asserted only `expect(where[0]).toBeDefined()`, which passes for any where clause. Deleting `eq(resumeJob.userId, session.user.id)` from the jobs GET query, a cross-user data leak, failed no test.
+  - Fixed in commit 04bdf44. Added `equalityComparisons()` to `test/db-mock.ts`, which flattens a drizzle where clause into the column/value pairs it filters on, and asserted the real scoping in the jobs list, resumes list, job detail, and settings reads. Re-ran the mutation across all four routes: each now fails.
+
+No other findings. No `.skip`/`.only`/`.todo`, no `any` casts, and no suppressed lint rules in the test sources.
+
+## Scope Gap Found After Review
+
+Running coverage surfaced three API routes this plan never listed, in either the task list or the out-of-scope section: `app/api/resumes/[id]/route.ts`, `app/api/jobs/[id]/analysis/route.ts`, and `app/api/jobs/[id]/analysis-stream/route.ts`. All three sat at 0 percent. Their omission was an oversight in the plan rather than a deliberate exclusion, so I covered them.
+
+- [x] T20: Tests for the resume detail, analysis snapshot, and analysis SSE stream routes (commit 9f69d2f)
+  - Files: `app/api/resumes/[id]/route.test.ts`, `app/api/jobs/[id]/analysis/route.test.ts`, `app/api/jobs/[id]/analysis-stream/route.test.ts`
+  - The SSE test reads decoded chunks off the stream reader and asserts the immediate first poll, the 1000ms interval poll, terminal close, and the error chunk. `analysis-stream/route.ts` enqueues plain strings rather than encoded bytes, so no `TextDecoder` is involved.
+
+Coverage over `app/lib/**` and `app/api/**` moved from 72.34 to 80.24 percent of statements, and from 77.20 to 89.06 percent of branches.

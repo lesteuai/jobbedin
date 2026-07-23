@@ -53,6 +53,7 @@ See full tree and entry points in [Pages & Routing](agent-docs/pages-routing.md)
 - [Database & Backend](agent-docs/database-backend.md) — Schema, migrations, API routes, session validation
 - [LangGraph Workflow & Agents](agent-docs/workflow-agents.md) — Node definitions, LLM prompts, Tavily, process tracking
 - [Conventions & Patterns](agent-docs/conventions.md) — Naming, code org, React patterns, authentication
+- [Unit Testing & Vitest](agent-docs/testing.md) — Test harness, coverage, shared utilities, testing conventions
 - [Gotchas & Troubleshooting](agent-docs/gotchas.md) — Known issues, debugging, environment setup
 
 ## Development
@@ -73,10 +74,17 @@ pnpm db:push      # Push to PostgreSQL
 pnpm test-db      # Validate connection
 ```
 
+**Test:**
+```bash
+pnpm test           # Run all tests once
+pnpm test:watch     # Run in watch mode
+pnpm test:coverage  # Generate coverage report
+```
+
 **Lint & Build:**
 ```bash
 pnpm lint
 pnpm build  # standalone output
 ```
 
-See [Conventions & Patterns](agent-docs/conventions.md) for naming, code org, and authentication patterns.
+See [Conventions & Patterns](agent-docs/conventions.md) for naming, code org, and authentication patterns. See [Unit Testing & Vitest](agent-docs/testing.md) for test structure and coverage details.
