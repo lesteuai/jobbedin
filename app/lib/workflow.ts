@@ -39,7 +39,7 @@ import {
 } from '@/app/lib/openrouter';
 import { STATUS_REASON } from '@/app/lib/constants';
 
-function resolveStatusReason(error: unknown): string | null {
+export function resolveStatusReason(error: unknown): string | null {
   if (isOutOfCreditError(error)) return STATUS_REASON.OUT_OF_CREDIT;
   if (isAuthError(error)) return STATUS_REASON.INVALID_API_KEY;
   return error instanceof Error ? error.message : null;
@@ -47,7 +47,7 @@ function resolveStatusReason(error: unknown): string | null {
 
 // Detects degenerate LLM output: empty text, runs of replacement/control
 // characters, or a short sequence repeated for an unusually long stretch.
-function isGibberish(text: string): boolean {
+export function isGibberish(text: string): boolean {
   const trimmed = text.trim();
   if (trimmed.length === 0) return true;
 
