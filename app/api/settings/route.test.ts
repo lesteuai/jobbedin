@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createDbMock } from '@/test/db-mock';
+import { createDbMock, equalityComparisons } from '@/test/db-mock';
 import { makeRequest, makeJsonRequest } from '@/test/next-request';
 import { decrypt } from '@/app/lib/crypto';
 
@@ -52,6 +52,10 @@ describe('GET /api/settings', () => {
       customLetterInstructions: 'letter instructions',
       customMsgInstructions: 'msg instructions',
       hasOpenrouterApiKey: true,
+    });
+    expect(equalityComparisons(dbMock.calls.select.at(-1)?.where[0])).toContainEqual({
+      column: 'user_id',
+      value: 'user-1',
     });
   });
 

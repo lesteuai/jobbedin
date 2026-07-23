@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createDbMock } from '@/test/db-mock';
+import { createDbMock, equalityComparisons } from '@/test/db-mock';
 import { makeRequest, makeJsonRequest } from '@/test/next-request';
 
 const dbMock = createDbMock();
@@ -46,7 +46,9 @@ describe('GET /api/jobs', () => {
 
     expect(body).toEqual(rows);
     const selectCall = dbMock.calls.select.at(-1);
-    expect(selectCall?.where[0]).toBeDefined();
+    const comparisons = equalityComparisons(selectCall?.where[0]);
+    expect(comparisons).toContainEqual({ column: 'resume_id', value: 'r1' });
+    expect(comparisons).toContainEqual({ column: 'user_id', value: 'user-1' });
   });
 });
 

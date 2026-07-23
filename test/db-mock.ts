@@ -14,7 +14,61 @@ import { vi } from 'vitest';
  *
  *   expect(db.calls.insert[0].values[0]).toEqual({ ... });
  *   expect(db.calls.insert[0].onConflictDoUpdate[0]).toEqual({ target: ..., set: { ... } });
+ *
+ * To assert a query is scoped to a column and value, pass the recorded where
+ * clause through `equalityComparisons`:
+ *   expect(equalityComparisons(db.calls.select[0].where[0]))
+ *     .toContainEqual({ column: 'user_id', value: 'user-1' });
  */
+
+type EqualityComparison = { column: string; value: unknown };
+
+type SqlLike = { queryChunks: unknown[] };
+
+function isSqlLike(chunk: unknown): chunk is SqlLike {
+  return typeof chunk === 'object' && chunk !== null && Array.isArray((chunk as SqlLike).queryChunks);
+}
+
+function isColumn(chunk: unknown): chunk is { name: string } {
+  if (typeof chunk !== 'object' || chunk === null) return false;
+  const candidate = chunk as { name?: unknown; table?: unknown };
+  return typeof candidate.name === 'string' && candidate.table !== undefined;
+}
+
+function isParam(chunk: unknown): chunk is { value: unknown } {
+  return typeof chunk === 'object' && chunk !== null && chunk.constructor?.name === 'Param';
+}
+
+/**
+ * Flattens a drizzle where clause into the column/value pairs it compares.
+ * Drizzle builds `eq(col, val)` as a nested SQL object holding a Column chunk
+ * followed by a Param chunk, so walking depth first and pairing each column
+ * with the next param recovers what the query is actually filtered on. This is
+ * what makes user-scoping assertions possible, since an opaque clause object
+ * would otherwise only be checkable for existence.
+ */
+export function equalityComparisons(clause: unknown): EqualityComparison[] {
+  const comparisons: EqualityComparison[] = [];
+  let pendingColumn: string | null = null;
+
+  const walk = (chunk: unknown) => {
+    if (isSqlLike(chunk)) {
+      chunk.queryChunks.forEach(walk);
+      return;
+    }
+    if (isColumn(chunk)) {
+      pendingColumn = chunk.name;
+      return;
+    }
+    if (isParam(chunk) && pendingColumn !== null) {
+      comparisons.push({ column: pendingColumn, value: chunk.value });
+      pendingColumn = null;
+    }
+  };
+
+  walk(clause);
+  return comparisons;
+}
 
 type RecordedInsertCall = {
   table: unknown;

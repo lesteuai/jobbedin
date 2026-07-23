@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createDbMock } from '@/test/db-mock';
+import { createDbMock, equalityComparisons } from '@/test/db-mock';
 import { makeRequest } from '@/test/next-request';
 
 const dbMock = createDbMock();
@@ -47,6 +47,17 @@ describe('GET /api/jobs/[id]', () => {
     const body = await response.json();
 
     expect(body).toEqual(job);
+  });
+
+  it('scopes the job lookup to the id and the session user', async () => {
+    dbMock.queueResult([{ id: 'job-1' }]);
+
+    const { GET } = await import('./route');
+    await GET(makeRequest(JOB_URL), { params: Promise.resolve({ id: 'job-1' }) });
+
+    const comparisons = equalityComparisons(dbMock.calls.select.at(-1)?.where[0]);
+    expect(comparisons).toContainEqual({ column: 'id', value: 'job-1' });
+    expect(comparisons).toContainEqual({ column: 'user_id', value: 'user-1' });
   });
 });
 
