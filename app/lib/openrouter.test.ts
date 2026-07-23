@@ -11,7 +11,6 @@ vi.mock('@langchain/openai', () => {
   return { ChatOpenAI };
 });
 
-import { ChatOpenAI } from '@langchain/openai';
 import {
   createReasoningLlm,
   createWritingLlm,
@@ -19,54 +18,69 @@ import {
   isAuthError,
 } from '@/app/lib/openrouter';
 
+type CapturedConfig = {
+  modelName: string;
+  temperature: number;
+  maxTokens: number;
+  modelKwargs: Record<string, unknown>;
+  apiKey?: string;
+  configuration: { baseURL: string };
+};
+
+// The ChatOpenAI mock above stores its constructor argument, so the factories'
+// return value is inspected through that captured config rather than the real class.
+function capturedConfig(llm: unknown): CapturedConfig {
+  return (llm as { config: CapturedConfig }).config;
+}
+
 describe('createReasoningLlm', () => {
   it('passes fixed temperature, maxTokens, modelKwargs, and baseURL', () => {
-    const llm = createReasoningLlm() as unknown as { config: any };
-    expect(llm.config.temperature).toBe(0);
-    expect(llm.config.maxTokens).toBe(4096);
-    expect(llm.config.modelKwargs).toEqual({ frequency_penalty: 0.3 });
-    expect(llm.config.configuration.baseURL).toBe('https://openrouter.ai/api/v1');
+    const config = capturedConfig(createReasoningLlm());
+    expect(config.temperature).toBe(0);
+    expect(config.maxTokens).toBe(4096);
+    expect(config.modelKwargs).toEqual({ frequency_penalty: 0.3 });
+    expect(config.configuration.baseURL).toBe('https://openrouter.ai/api/v1');
   });
 
   it('uses process.env.REASONING_MODEL when set', () => {
     const original = process.env.REASONING_MODEL;
     process.env.REASONING_MODEL = 'custom/reasoning-model';
-    const llm = createReasoningLlm() as unknown as { config: any };
-    expect(llm.config.modelName).toBe('custom/reasoning-model');
+    const config = capturedConfig(createReasoningLlm());
+    expect(config.modelName).toBe('custom/reasoning-model');
     process.env.REASONING_MODEL = original;
   });
 
   it('falls back to default model when REASONING_MODEL is unset', () => {
     const original = process.env.REASONING_MODEL;
     delete process.env.REASONING_MODEL;
-    const llm = createReasoningLlm() as unknown as { config: any };
-    expect(llm.config.modelName).toBe('meta-llama/llama-3.1-8b-instruct');
+    const config = capturedConfig(createReasoningLlm());
+    expect(config.modelName).toBe('meta-llama/llama-3.1-8b-instruct');
     process.env.REASONING_MODEL = original;
   });
 });
 
 describe('createWritingLlm', () => {
   it('passes temperature 0.7 and the same maxTokens/modelKwargs/baseURL', () => {
-    const llm = createWritingLlm() as unknown as { config: any };
-    expect(llm.config.temperature).toBe(0.7);
-    expect(llm.config.maxTokens).toBe(4096);
-    expect(llm.config.modelKwargs).toEqual({ frequency_penalty: 0.3 });
-    expect(llm.config.configuration.baseURL).toBe('https://openrouter.ai/api/v1');
+    const config = capturedConfig(createWritingLlm());
+    expect(config.temperature).toBe(0.7);
+    expect(config.maxTokens).toBe(4096);
+    expect(config.modelKwargs).toEqual({ frequency_penalty: 0.3 });
+    expect(config.configuration.baseURL).toBe('https://openrouter.ai/api/v1');
   });
 
   it('uses process.env.WRITING_MODEL when set', () => {
     const original = process.env.WRITING_MODEL;
     process.env.WRITING_MODEL = 'custom/writing-model';
-    const llm = createWritingLlm() as unknown as { config: any };
-    expect(llm.config.modelName).toBe('custom/writing-model');
+    const config = capturedConfig(createWritingLlm());
+    expect(config.modelName).toBe('custom/writing-model');
     process.env.WRITING_MODEL = original;
   });
 
   it('falls back to default model when WRITING_MODEL is unset', () => {
     const original = process.env.WRITING_MODEL;
     delete process.env.WRITING_MODEL;
-    const llm = createWritingLlm() as unknown as { config: any };
-    expect(llm.config.modelName).toBe('meta-llama/llama-3.1-8b-instruct');
+    const config = capturedConfig(createWritingLlm());
+    expect(config.modelName).toBe('meta-llama/llama-3.1-8b-instruct');
     process.env.WRITING_MODEL = original;
   });
 });
@@ -85,47 +99,47 @@ describe('key resolution via createReasoningLlm', () => {
 
   it('decrypts a valid encrypted key and passes it as apiKey', () => {
     const encrypted = encrypt('user-real-key');
-    const llm = createReasoningLlm(encrypted) as unknown as { config: any };
-    expect(llm.config.apiKey).toBe('user-real-key');
+    const config = capturedConfig(createReasoningLlm(encrypted));
+    expect(config.apiKey).toBe('user-real-key');
   });
 
   it('falls back to server key when encryptedApiKey is undefined', () => {
-    const llm = createReasoningLlm(undefined) as unknown as { config: any };
-    expect(llm.config.apiKey).toBe('server-fallback-key');
+    const config = capturedConfig(createReasoningLlm(undefined));
+    expect(config.apiKey).toBe('server-fallback-key');
   });
 
   it('falls back to server key when encryptedApiKey is null', () => {
-    const llm = createReasoningLlm(null) as unknown as { config: any };
-    expect(llm.config.apiKey).toBe('server-fallback-key');
+    const config = capturedConfig(createReasoningLlm(null));
+    expect(config.apiKey).toBe('server-fallback-key');
   });
 
   it('falls back to server key when encryptedApiKey is an empty string', () => {
-    const llm = createReasoningLlm('') as unknown as { config: any };
-    expect(llm.config.apiKey).toBe('server-fallback-key');
+    const config = capturedConfig(createReasoningLlm(''));
+    expect(config.apiKey).toBe('server-fallback-key');
   });
 
   it('falls back to server key when encryptedApiKey is whitespace only', () => {
-    const llm = createReasoningLlm('   ') as unknown as { config: any };
-    expect(llm.config.apiKey).toBe('server-fallback-key');
+    const config = capturedConfig(createReasoningLlm('   '));
+    expect(config.apiKey).toBe('server-fallback-key');
   });
 
   it('logs and falls back to server key when the key is undecryptable', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const llm = createReasoningLlm('not-a-valid-payload') as unknown as { config: any };
-    expect(llm.config.apiKey).toBe('server-fallback-key');
+    const config = capturedConfig(createReasoningLlm('not-a-valid-payload'));
+    expect(config.apiKey).toBe('server-fallback-key');
     expect(errorSpy).toHaveBeenCalled();
   });
 
   it('falls back to server key when the decrypted key is whitespace only', () => {
     const encrypted = encrypt('   ');
-    const llm = createReasoningLlm(encrypted) as unknown as { config: any };
-    expect(llm.config.apiKey).toBe('server-fallback-key');
+    const config = capturedConfig(createReasoningLlm(encrypted));
+    expect(config.apiKey).toBe('server-fallback-key');
   });
 
   it('trims the resolved key', () => {
     const encrypted = encrypt('  padded-key  ');
-    const llm = createReasoningLlm(encrypted) as unknown as { config: any };
-    expect(llm.config.apiKey).toBe('padded-key');
+    const config = capturedConfig(createReasoningLlm(encrypted));
+    expect(config.apiKey).toBe('padded-key');
   });
 });
 
