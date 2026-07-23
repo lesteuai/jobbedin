@@ -19,7 +19,7 @@ This plan covers the pure logic and request-handling branches that carry real ri
 
 ### Wave 1
 
-- [x] T1: Vitest harness, React testing stack, and shared test helpers
+- [x] T1: Vitest harness, React testing stack, and shared test helpers (commit 3c5a123)
   - Files: `vitest.config.ts` (new), `vitest.setup.ts` (new), `vitest.setup.dom.ts` (new), `test/db-mock.ts` (new), `test/next-request.ts` (new), `test/render.tsx` (new), `package.json`, `.gitignore`
   - Do:
     - Install the React testing stack as devDependencies with pnpm: `@testing-library/react`, `@testing-library/dom`, `@testing-library/jest-dom`, `@testing-library/user-event`, `jsdom`. `@testing-library/dom` is a peer dependency of RTL 16 and must be explicit. React is 19.2.4, so RTL must be v16 or newer.
@@ -38,47 +38,48 @@ This plan covers the pure logic and request-handling branches that carry real ri
 
 ### Wave 2
 
-- [ ] T2: Tests for `app/lib/crypto.ts`
+- [x] T2: Tests for `app/lib/crypto.ts` (commit ecc4d78)
   - Files: `app/lib/crypto.test.ts` (new)
   - Do: cover round-trip `encrypt` → `decrypt` for ASCII, unicode, and empty string; assert the `iv:authTag:ciphertext` hex shape and that two encryptions of the same plaintext differ (random IV); assert `decrypt` throws "Malformed encrypted payload" for payloads with the wrong number of `:` segments; assert `decrypt` throws when the auth tag or ciphertext is tampered with; assert both functions throw "BETTER_AUTH_SECRET is not set" when the env var is absent (delete and restore it inside the test).
   - Done when: all cases pass and no test leaks a mutated `process.env`.
 
-- [ ] T3: Tests for `app/lib/openrouter.ts`
+- [x] T3: Tests for `app/lib/openrouter.ts` (commit 66658af, lint fix a691134)
   - Files: `app/lib/openrouter.test.ts` (new)
   - Do: `vi.mock('@langchain/openai')` so `ChatOpenAI` is a spy capturing its constructor config. Assert `createReasoningLlm` uses `temperature: 0`, `maxTokens: 4096`, `frequency_penalty: 0.3`, the OpenRouter `baseURL`, and honors `REASONING_MODEL` with the documented default fallback; same for `createWritingLlm` with `temperature: 0.7` and `WRITING_MODEL`. For key resolution: a valid encrypted key (produced with the real `encrypt`) is decrypted and passed through; a `null`/`undefined`/whitespace-only key falls back to `process.env.OPENROUTER_API_KEY`; an undecryptable key logs an error (spy on `console.error`) and falls back to the server key. Cover `isOutOfCreditError` and `isAuthError` for: matching constructor name plus `status`, matching constructor name plus string/number `code`, wrong constructor name, wrong status, `null`, `undefined`, and primitives.
   - Done when: every branch of `resolveApiKey`, `isOutOfCreditError`, and `isAuthError` is exercised and tests pass.
 
-- [ ] T4: Tests for `app/lib/system-prompt.ts`
+- [x] T4: Tests for `app/lib/system-prompt.ts` (commit 787e12a)
   - Files: `app/lib/system-prompt.test.ts` (new)
   - Do: assert `generate_letter_prompt()` and `generate_msg_prompt()` return the base prompt unchanged for `undefined`, `null`, `''`, and whitespace-only input; assert non-empty instructions are appended under an `ADDITIONAL USER INSTRUCTIONS:` heading with the instructions trimmed; assert `{` and `}` in custom instructions are escaped to `{{`/`}}` so `ChatPromptTemplate` does not treat them as variables; assert the base prompts are unmodified between calls (no accumulation). Also assert the static prompt exports (`company_prompt`, `cross_reference_prompt`, `feedback_prompt`) are non-empty strings containing their required Markdown section headings.
   - Done when: escaping and append behavior are pinned and tests pass.
 
-- [ ] T5: Tests for `app/lib/api-handler.ts`
+- [x] T5: Tests for `app/lib/api-handler.ts` (commit 63c439a)
   - Files: `app/lib/api-handler.test.ts` (new)
   - Do: `vi.mock('@/app/lib/auth')` to control `auth.api.getSession`. Assert each exception class sets the right `name` and default message. For `handleAsync`: pass-through of a successful response; `BadRequestException` → 400 with its message; `UnauthorizedException` → 401; `NotFoundException` → 404; an unknown error → 500 with body `{ error: 'Internal server error' }` and a `console.error` call (spy and silence it). For `handleAsyncAuth`: a valid session is forwarded as the second argument and extra route args (e.g. `{ params }`) are forwarded after it; a `null` session short-circuits to 401 without invoking the wrapped handler. Use `test/next-request.ts` to build requests and assert on parsed JSON bodies and `status`.
   - Done when: every status branch of `withErrorHandling` and both wrappers are covered.
 
-- [ ] T6: Export and test the `workflow.ts` pure helpers
+- [x] T6: Export and test the `workflow.ts` pure helpers (commit ca60ccc)
   - Files: `app/lib/workflow.ts`, `app/lib/workflow.test.ts` (new)
   - Do: change `isGibberish` and `resolveStatusReason` in `app/lib/workflow.ts` to named exports. Make no other change to that file. In the test, mock the heavy module graph so importing `workflow.ts` has no side effects: `vi.mock('@/app/lib/db')`, `vi.mock('@langchain/tavily')`, and `vi.mock('@langchain/openai')`. Cover `isGibberish` for: empty and whitespace-only strings (true), normal prose and normal Markdown output (false), a string over 5% replacement/control characters (true), a string under that ratio (false), one character repeated 40+ times (true) and 39 times (false), a 2-4 char sequence repeated 16+ times (true) and 15 times (false). Cover `resolveStatusReason` returning `STATUS_REASON.OUT_OF_CREDIT` for a 402 `APIError`-shaped object, `STATUS_REASON.INVALID_API_KEY` for a 401 `AuthenticationError`-shaped object, and `null` for a plain `Error`, `null`, and `undefined`.
   - Done when: the helpers are exported, all boundary cases pass, and importing the test does not attempt a DB or network connection.
+  - Finding: the single-character boundary in the plan above was wrong. A run of one repeated character also satisfies `/(.{2,4})\1{15,}/` once it reaches 32 characters, so `isGibberish` returns true from 32 repeats, not 40. The test asserts the real boundary (31 false, 32 true) rather than the assumed one.
 
-- [ ] T7: Tests for `app/lib/constants.ts`
+- [x] T7: Tests for `app/lib/constants.ts` (commit 4ecd0e6)
   - Files: `app/lib/constants.test.ts` (new)
   - Do: assert `STATUS_REASON` values are the exact strings `'out_of_credit'` and `'invalid_api_key'` (the API, the DB, and the UI all key off these literals) and that `STATUS_REASON_MESSAGE` has a non-empty message keyed by each `STATUS_REASON` value. Assert a lookup with an unknown key is `undefined`, since `AnalysisReport` and `ChatPanel` depend on that to fall back to their generic message.
   - Done when: the file passes and the literals are pinned.
 
-- [ ] T13: Tests for the `ym/` modal and button primitives
+- [x] T13: Tests for the `ym/` modal and button primitives (commit 3246eb3)
   - Files: `app/lib/components/ym/YmButton.test.tsx` (new), `app/lib/components/ym/YmModal.test.tsx` (new), `app/lib/components/ym/YmErrorModal.test.tsx` (new)
   - Do: `YmButton` — renders children, applies `ym-btn` always and `ym-btn-primary` only for `variant="primary"`, merges a caller-supplied `className`, forwards arbitrary button props (`disabled`, `type`, `aria-label`), and fires `onClick`; a disabled button does not fire. `YmModal` — renders nothing when `open` is false; when open, shows the title (default `JobbedIn` and a custom one), children, and the default `OK`/`Cancel` labels plus custom ones; clicking OK calls `onOk`, clicking Cancel calls `onCancel`, clicking the overlay calls `onCancel`, and clicking inside the window body does NOT call `onCancel` (the `stopPropagation` guard). `YmErrorModal` — same closed/open behavior, renders the message, and both the OK button and the overlay call `onClose` while a click inside the window does not. Use `userEvent` for interactions and query by role and text.
   - Done when: all three files pass and the overlay-vs-body click distinction is asserted.
 
-- [ ] T14: Tests for `Sidebar` and `AppFrame`
+- [x] T14: Tests for `Sidebar` and `AppFrame` (commit 4e5bb73)
   - Files: `app/lib/components/ym/Sidebar.test.tsx` (new), `app/lib/components/ym/AppFrame.test.tsx` (new)
   - Do: `Sidebar` — renders the title and add label, calls `onAdd` on the add button; shows `(empty)` for an empty item list and hides it when items exist; renders one row per item with its name; clicking a row calls `onSelect` with that id; the delete button (found by its `aria-label`, `Delete <name>`) calls `onDelete` with the id and does NOT also call `onSelect` (the `stopPropagation` guard); the row for `selectedId` has `data-active="true"` and others `false`; optional `header` and `footer` nodes render when supplied. `AppFrame` — `vi.mock('next/navigation')` for `useRouter`/`usePathname`, `vi.mock('@/app/lib/auth/client')` for `authClient.signOut`, and `vi.mock('@/app/lib/app-store')` for `useAppStore` returning a `clearStore` spy. Assert: on `/` the nav button reads `Settings` and routes to `/settings`; on `/settings` it reads `Home` and routes to `/`; children render; `Sign Out` awaits `signOut`, then calls `clearStore`, then pushes `/`.
   - Done when: both files pass and the sign-out ordering is asserted.
 
-- [ ] T15: Tests for `MarkdownPanel`
+- [x] T15: Tests for `MarkdownPanel` (commit fc5ad65)
   - Files: `app/lib/components/ym/MarkdownPanel.test.tsx` (new)
   - Do: assert plain text renders; a `#` heading renders as an `h1` carrying the purple class and an `###` heading as an `h3` with its class; a GFM table renders as a `table` (proving `remark-gfm` is wired); a bullet list renders as a `ul` with the list classes; an empty string renders without throwing. Query by role where possible (`heading`, `table`, `list`). Do not assert on KaTeX output beyond it not throwing on inline math, since that markup is a third-party implementation detail.
   - Done when: the file passes and the remark/rehype plugin wiring is proven by at least the table case.
