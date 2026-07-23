@@ -84,25 +84,42 @@ export const generate_msg_prompt = "...";    // Recruiter message
 2. Easy prompt updates in one place
 3. Consistent behavior across generation modes
 
-## LLM Integration
+## LLM Integration & Factories (app/lib/openrouter.ts)
 
 **Provider:** OpenRouter API
-**Model:** meta-llama/llama-3.1-8b-instruct:free (configurable via WRITING_MODEL, REASONING_MODEL env vars)
+**Models:** 
+- Reasoning (ResearchCompany, CrossRef, ResumeFeedback): REASONING_MODEL env var, default meta-llama/llama-3.1-8b-instruct, temperature 0
+- Writing (GenerateLetter, GenerateMsg, chat): WRITING_MODEL env var, default meta-llama/llama-3.1-8b-instruct, temperature 0.7
 **Library:** @langchain/openai (ChatOpenAI client)
 
-**Usage in nodes:**
+**LLM factories** (replace per-route instantiation):
 ```typescript
-const llm = new ChatOpenAI({
-  modelName: 'meta-llama/llama-3.1-8b-instruct:free',
-  openAIApiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1',
-});
+export function createReasoningLlm(apiKey?: string | null): ChatOpenAI
+export function createWritingLlm(apiKey?: string | null): ChatOpenAI
+```
 
-const response = await llm.invoke([
-  new SystemMessagePromptTemplate().formatPromptValue({ ... }),
-  new HumanMessagePromptTemplate().formatPromptValue({ ... }),
+Both factories:
+- Accept optional user API key (from decrypted user_settings.openrouterApiKey)
+- Resolve to user key if provided and non-empty; otherwise fall back to process.env.OPENROUTER_API_KEY
+- Always use baseURL: 'https://openrouter.ai/api/v1'
+
+**Usage in workflow nodes:**
+```typescript
+const reasoningLlm = createReasoningLlm(userApiKey);
+const writingLlm = createWritingLlm(userApiKey);
+
+const response = await reasoningLlm.invoke([
+  new SystemMessage(prompt),
+  ...messages
 ]);
 ```
+
+**Per-user key flow in workflow:**
+1. Fetch user settings row (customLetterInstructions, customMsgInstructions, openrouterApiKey)
+2. Attempt decrypt(openrouterApiKey); catch silently and set userApiKey = undefined
+3. Pass userApiKey to both createReasoningLlm and createWritingLlm
+4. If user key present and valid, it's used exclusively (no fallback)
+5. If user key absent or decrypt failed, server key (OPENROUTER_API_KEY) is used
 
 ## Process Status Tracking
 
@@ -115,6 +132,7 @@ process {
   userId: UUID,
   processType: 'company' | 'jdmatch' | 'feedback' | 'letter' | 'message',
   status: 'pending' | 'processing' | 'done' | 'failed',  // from ProcessStatus enum
+  statusReason: 'out_of_credit' | null,  // set when error is HTTP 402
   createdAt: Date,
   updatedAt: Date
 }
@@ -125,8 +143,41 @@ process {
 2. 'pending' for Letter and Message nodes initially
 3. 'processing' for Letter and Message when they start (depends on Company + CrossRef)
 4. 'done' or 'failed' upon completion
+5. On failure, statusReason set to 'out_of_credit' if error is HTTP 402 (detected via isOutOfCreditError)
 
-Frontend receives updates via EventSource to `/api/jobs/[id]/analysis-stream` (SSE), which polls database every 1s and streams results to client.
+**Out-of-credit detection** — In each node's catch block:
+```typescript
+catch (error) {
+  const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
+  await db.update(processTable).set({ status: ProcessStatus.Failed, statusReason });
+  throw error;  // Propagate to workflow.invoke() catch
+}
+```
+
+**Terminal state guarantee** — After workflow.invoke() completes or throws:
+```typescript
+catch (error) {
+  const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
+  // Mark any leftover pending/processing rows as failed
+  await db.update(processTable).set({ status: ProcessStatus.Failed, statusReason })
+    .where(and(
+      eq(processTable.jobId, jobId),
+      inArray(processTable.status, [ProcessStatus.Pending, ProcessStatus.Processing])
+    ));
+}
+```
+Ensures SSE stream reaches terminal state even if upstream node throws (e.g., Company fails → Letter/Message never run → their process rows stay pending without this cleanup).
+
+**Frontend receives updates via EventSource** to `/api/jobs/[id]/analysis-stream` (SSE), which polls database every 1s and streams results to client:
+```json
+{
+  "processes": [
+    { "processType": "company", "status": "done", "statusReason": null },
+    { "processType": "letter", "status": "failed", "statusReason": "out_of_credit" }
+  ]
+}
+```
+Client can render out-of-credit messaging based on statusReason.
 
 ## Execution Model
 

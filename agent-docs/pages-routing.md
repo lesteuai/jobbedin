@@ -25,9 +25,9 @@ API routes (all session-validated, userId-scoped):
 /api/jobs/[id]              → GET (single), DELETE
 /api/jobs/[id]/analyze      → POST (trigger workflow, returns 202)
 /api/jobs/[id]/analysis     → GET (workflow results + process status, one-shot)
-/api/jobs/[id]/analysis-stream → GET (SSE: streams workflow results + process status every 1s)
-/api/jobs/[id]/chat         → GET (conversation history), POST (send message or clear, uses custom prompts)
-/api/settings               → GET (fetch custom AI prompts), PUT (upsert custom AI prompts)
+/api/jobs/[id]/analysis-stream → GET (SSE: streams workflow results + process status + statusReason every 1s)
+/api/jobs/[id]/chat         → GET (conversation history), POST (send message or clear, uses custom prompts and user API key if set)
+/api/settings               → GET (fetch custom AI prompts + hasOpenrouterApiKey flag), PUT (upsert custom AI prompts and/or encrypted API key)
 ```
 
 ## Data Flow
@@ -65,14 +65,22 @@ API routes (all session-validated, userId-scoped):
 
 ### app/settings/page.tsx
 - Protected page for authenticated users; redirects to "/" if session missing
-- Two main sections: Change Password and Custom AI Instructions
+- Three main sections: Change Password, Custom AI Instructions, and OpenRouter API Key
 - **Change Password:** Requires current password + new password; calls `authClient.changePassword({currentPassword, newPassword})`; shows success/error messages
 - **Custom AI Instructions:** Two textareas for cover letter and recruiter message custom instructions
   - Loads existing instructions on mount via GET /api/settings
   - Saves on submit via PUT /api/settings with { customLetterInstructions, customMsgInstructions }
   - Instructions are optional (leave blank to use defaults)
   - Textarea height is fixed (5 rows, resize: none) per convention
-- All fields disabled during submission (passwordSaving, promptsSaving flags)
+- **OpenRouter API Key:** Bring Your Own (BYOK) key management
+  - Fetches current state via GET /api/settings (returns hasOpenrouterApiKey boolean; never raw key)
+  - Shows "A key is saved" or "Using shared server key" message
+  - Password input for key entry (masked for security)
+  - Two buttons: "Save Key" (encryptable if input non-empty) and "Clear Key" (appears only if key already saved)
+  - Save sends PUT /api/settings with { openrouterApiKey: value }, which encrypts server-side
+  - Clear sends PUT /api/settings with { clearOpenrouterApiKey: true }
+  - Encrypted key stored in user_settings.openrouterApiKey; used by workflow and chat routes for all generation if present
+- All fields disabled during submission (passwordSaving, promptsSaving, apiKeySaving flags)
 
 ### app/page.tsx (Login Page) — Resend Email Controls
 - Added `emailSent` state (true after successful signup/forgot/delete send)

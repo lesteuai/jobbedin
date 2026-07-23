@@ -108,9 +108,15 @@ Located in `app/lib/email.ts`, exported as `EMAIL_ENABLED = process.env.EMAIL_EN
 - If EMAIL_ENABLED=true but SMTP vars missing, sendEmail() crashes
 
 **Workflow vars:**
-- OPENROUTER_API_KEY (required for LLM nodes)
+- OPENROUTER_API_KEY (required for LLM nodes; used as fallback when user does not provide key)
 - TAVILY_API_KEY (required for company research)
 - REASONING_MODEL, WRITING_MODEL (optional; defaults to meta-llama/llama-3.1-8b-instruct:free)
+
+**Encryption (Bring Your Own OpenRouter Key):**
+- BETTER_AUTH_SECRET (now used for both session signing AND deriving encryption key for stored API keys)
+- App crashes on import if BETTER_AUTH_SECRET missing
+- User API keys stored encrypted in user_settings.openrouterApiKey using AES-256-GCM
+- If BETTER_AUTH_SECRET changes, all stored user keys become unrecoverable
 
 **Failure mode:** App crashes on import if required vars missing
 
@@ -144,6 +150,20 @@ Located in `app/lib/email.ts`, exported as `EMAIL_ENABLED = process.env.EMAIL_EN
 **TAVILY_API_KEY missing:** ResearchCompany node fails
 - Same silent failure pattern
 
+### Out-of-Credit Detection (HTTP 402)
+
+**Detection mechanism:** Each node catches errors and checks `isOutOfCreditError()`, which detects APIError with status/code === 402
+
+**When out-of-credit:**
+- Process status set to Failed with statusReason = 'out_of_credit'
+- SSE stream includes statusReason in payload (frontend can render "out of credit" message)
+- If user has their own API key set, it's used exclusively (no fallback to server key on 402)
+- If user does not have key, 402 indicates server key is out of credit
+
+**Stream terminal state guarantee:** After workflow.invoke() completes or throws, app.invoke() catch updates any leftover pending/processing processes to Failed. Ensures SSE stream doesn't hang if upstream node fails (e.g., Company fails → Letter/Message never run → their rows stay pending without cleanup)
+
+**Gotcha:** Decrypt of user API key can fail (malformed payload, wrong BETTER_AUTH_SECRET). On decrypt error, userApiKey set to undefined and server key is used silently. Console logs the error but frontend doesn't know key loading failed.
+
 ### Fire-and-Forget Execution
 
 `/api/jobs/[id]/analyze` calls `void runWorkflow()` without awaiting:
@@ -162,6 +182,16 @@ Each node independently updates its own process record:
 - No aggregated error summary
 - No retry mechanism at node level
 - Frontend displays per-node status, not aggregated errors
+
+## Settings API Partial Updates
+
+The `/api/settings` PUT route supports partial updates to avoid clobbering unmodified fields:
+- Only fields present in request body are updated
+- Saving API key does not clear custom instructions (and vice versa)
+- If body is empty, route returns 200 with no changes
+- Empty string values (e.g., `customLetterInstructions: ""`) are treated as intentional updates (clears the field)
+
+**Gotcha:** OpenRouter API key is trimmed client-side before sending; empty/whitespace-only input treated as "no key to set" (not sent in request body). To clear a key, send `clearOpenrouterApiKey: true` instead.
 
 ## Job Lazy-Loading
 
@@ -206,9 +236,22 @@ Example:
 
 **Chat not responding:**
 1. Check server console for LLM errors
-2. Verify OPENROUTER_API_KEY set
+2. Verify OPENROUTER_API_KEY set (or user has provided key in settings)
 3. Check conversation history in cover_letter_history / message_gen_history tables
 4. Verify job has company research + JD match (required for chat context)
+5. If HTTP 402 on chat send, indicates out of credit; check if user key is set (settings page)
+
+**"Out of credit" (HTTP 402 on analysis or chat):**
+1. Check process table: statusReason = 'out_of_credit' confirms out-of-credit error
+2. Check if user has OpenRouter key saved (GET /api/settings returns hasOpenrouterApiKey)
+3. If user key set: their key is out of credit; ask them to add more funds or switch to server key
+4. If no user key set: server key (OPENROUTER_API_KEY) is out of credit; need to refill or set user keys
+
+**Settings API not saving:**
+1. Ensure request body includes field name (e.g., `{ "customLetterInstructions": "..." }`)
+2. To clear API key, send `{ "clearOpenrouterApiKey": true }` not `{ "openrouterApiKey": "" }`
+3. Verify content-type header is application/json
+4. Check network response status (should be 200 with `{ "success": true }`)
 
 ## Architecture Evolution Notes
 
@@ -223,3 +266,7 @@ Example:
 - Resume lazy-loading implemented: selectResume() fetches content only on first selection
 - Job lazy-loading implemented: selectJob() fetches content only on first selection
 - Analysis streaming refactored: EventSource replaces client polling; server streams via `/api/jobs/[id]/analysis-stream` SSE endpoint
+- OpenRouter out-of-credit detection added: HTTP 402 errors set statusReason on process records; ensures SSE stream reaches terminal state even if upstream node fails
+- Bring Your Own OpenRouter Key (BYOK) added: users can store encrypted API key in user_settings; LLM factories support per-user keys with fallback to server key
+- Encryption module added (crypto.ts): AES-256-GCM with key derived from BETTER_AUTH_SECRET
+- Settings API refactored: PUT supports partial updates to preserve unmodified fields (e.g., saving API key doesn't clobber custom prompts)

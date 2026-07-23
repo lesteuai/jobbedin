@@ -15,6 +15,13 @@
       "when": 1783215903877,
       "tag": "0001_quick_praxagora",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783300550278,
+      "tag": "0002_open_gravity",
+      "breakpoints": true
     }
   ]
 }

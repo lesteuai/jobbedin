@@ -35,6 +35,8 @@
 
 **Utilities & State:** `app/lib/`
 - `api-handler.ts`, `app-store.tsx`, `auth/`, `db/`, `workflow.ts`, `system-prompt.ts`, `utils.ts`
+- `openrouter.ts` — LLM factory functions (createReasoningLlm, createWritingLlm) and HTTP 402 detection
+- `crypto.ts` — Encryption/decryption for storing sensitive user data (OpenRouter API keys)
 
 **Hooks:** `app/lib/hooks/`
 - `use-chat.ts`

@@ -47,6 +47,7 @@ export const GET = handleAsyncAuth(async (request: NextRequest, session, { param
             processes: job.processes.map((p) => ({
               processType: p.processType,
               status: p.status,
+              statusReason: p.statusReason ?? null,
             })),
           };
 

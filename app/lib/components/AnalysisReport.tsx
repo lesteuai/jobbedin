@@ -21,11 +21,12 @@ type Props = {
   setTab: (tab: Tab) => void;
   analysisData: AnalysisData | null;
   getProcessStatus: (type: string) => string | null;
+  getProcessReason: (type: string) => string | null;
   onBack: () => void;
   chat: ReturnType<typeof useChat>;
 };
 
-export function AnalysisReport({ selectedName, tab, setTab, analysisData, getProcessStatus, onBack, chat }: Props) {
+export function AnalysisReport({ selectedName, tab, setTab, analysisData, getProcessStatus, getProcessReason, onBack, chat }: Props) {
   const tabConfig: Record<string, { processType: string; content: string | null | undefined }> = {
     Company: { processType: ProcessType.Company, content: analysisData?.company },
     JDMatch: { processType: ProcessType.JDMatch, content: analysisData?.jdMatch },
@@ -42,7 +43,7 @@ export function AnalysisReport({ selectedName, tab, setTab, analysisData, getPro
       if ([ProcessStatus.Processing, ProcessStatus.Pending].includes(letterStatus as ProcessStatus) || [ProcessStatus.Processing, ProcessStatus.Pending].includes(messageStatus as ProcessStatus)) {
         return <div style={{ color: '#666', fontStyle: 'italic' }}>Generating...</div>;
       }
-      return <ChatPanel {...chat} getProcessStatus={getProcessStatus} />;
+      return <ChatPanel {...chat} getProcessStatus={getProcessStatus} getProcessReason={getProcessReason} />;
     }
     const cfg = tabConfig[tab] ?? { processType: '', content: null };
     const status = getProcessStatus(cfg.processType);

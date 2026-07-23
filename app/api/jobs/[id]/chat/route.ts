@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { coverLetterHistory, messageGenHistory, resumeJob, company, jobDescriptionMatch, resume, userSettings, ProcessType } from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
 import { generate_letter_prompt, generate_msg_prompt } from '@/app/lib/system-prompt';
 import { handleAsyncAuth, BadRequestException, NotFoundException } from '@/app/lib/api-handler';
+import { createWritingLlm, isOutOfCreditError } from '@/app/lib/openrouter';
+import { decrypt } from '@/app/lib/crypto';
 
 type ChatLine = {
   role: 'user' | 'ai';
@@ -13,13 +14,6 @@ type ChatLine = {
 };
 
 type ChatMode = typeof ProcessType.Letter | typeof ProcessType.Message;
-
-const writingLlm = new ChatOpenAI({
-  modelName: process.env.WRITING_MODEL ?? 'meta-llama/llama-3.1-8b-instruct',
-  temperature: 0.7,
-  apiKey: process.env.OPENROUTER_API_KEY,
-  configuration: { baseURL: 'https://openrouter.ai/api/v1' },
-});
 
 export const GET = handleAsyncAuth(async (
   request: NextRequest,
@@ -123,6 +117,17 @@ export const POST = handleAsyncAuth(async (
     ]);
 
     const settingsRow = userSettingsRows[0];
+
+    let userApiKey: string | undefined;
+    if (settingsRow?.openrouterApiKey) {
+      try {
+        userApiKey = decrypt(settingsRow.openrouterApiKey);
+      } catch (e) {
+        console.error('Failed to decrypt user OpenRouter key:', e);
+      }
+    }
+    const writingLlm = createWritingLlm(userApiKey);
+
     const systemPrompt = mode === ProcessType.Letter
       ? generate_letter_prompt(settingsRow?.customLetterInstructions)
       : generate_msg_prompt(settingsRow?.customMsgInstructions);
@@ -143,11 +148,22 @@ export const POST = handleAsyncAuth(async (
     const contextString = contextParts.length > 0 ? contextParts.join('\n\n') : '';
     const fullSystemPrompt = contextString ? `${systemPrompt}\n\n${contextString}` : systemPrompt;
 
-    const result = await writingLlm.invoke([
-      new SystemMessage(fullSystemPrompt),
-      ...historyMessages,
-      new HumanMessage(userMessage),
-    ]);
+    let result;
+    try {
+      result = await writingLlm.invoke([
+        new SystemMessage(fullSystemPrompt),
+        ...historyMessages,
+        new HumanMessage(userMessage),
+      ]);
+    } catch (error) {
+      if (isOutOfCreditError(error)) {
+        return NextResponse.json(
+          { error: 'OpenRouter is out of credit. Add your own OpenRouter API key in Settings to continue.' },
+          { status: 402 }
+        );
+      }
+      throw error;
+    }
 
     const aiReply = typeof result.content === 'string' ? result.content : String(result.content);
 

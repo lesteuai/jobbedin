@@ -28,6 +28,7 @@ type Props = {
   handleSend: () => void;
   handleClear: () => void;
   getProcessStatus: (type: string) => string | null;
+  getProcessReason: (type: string) => string | null;
 };
 
 export function ChatPanel({
@@ -38,9 +39,11 @@ export function ChatPanel({
   canSend, canClear,
   handleSend, handleClear,
   getProcessStatus,
+  getProcessReason,
 }: Props) {
   const modeProcessType = mode === ProcessType.Letter ? ProcessType.Letter : ProcessType.Message;
   const modeStatus = getProcessStatus(modeProcessType);
+  const modeReason = getProcessReason(modeProcessType);
 
   const renderMessages = () => {
     if (modeStatus === ProcessStatus.Pending || modeStatus === ProcessStatus.Processing) {
@@ -51,6 +54,13 @@ export function ChatPanel({
       );
     }
     if (modeStatus === ProcessStatus.Failed) {
+      if (modeReason === 'out_of_credit') {
+        return (
+          <div style={{ color: '#c00', fontStyle: 'italic' }}>
+            OpenRouter is out of credit. Add your own OpenRouter API key in Settings, then re-analyze.
+          </div>
+        );
+      }
       return <div style={{ color: '#c00', fontStyle: 'italic' }}>Generation failed. Please re-analyze.</div>;
     }
     if (lines.length === 0 && !isAiTyping) {

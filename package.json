@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "rm -r .next && next dev",
+    "dev": "rm -rf .next && next dev",
     "build": "next telemetry disable && next build",
     "start": "next start",
     "deploy-dev": "vercel",

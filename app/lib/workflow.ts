@@ -1,4 +1,3 @@
-import { ChatOpenAI } from '@langchain/openai';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import {
   ChatPromptTemplate,
@@ -24,7 +23,7 @@ import {
   ProcessType,
   ProcessStatus,
 } from '@/app/lib/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
   company_prompt,
   cross_reference_prompt,
@@ -32,6 +31,12 @@ import {
   generate_msg_prompt,
   feedback_prompt,
 } from '@/app/lib/system-prompt';
+import {
+  createReasoningLlm,
+  createWritingLlm,
+  isOutOfCreditError,
+} from '@/app/lib/openrouter';
+import { decrypt } from '@/app/lib/crypto';
 
 interface WorkflowParams {
   jobId: string;
@@ -39,20 +44,6 @@ interface WorkflowParams {
   resumeText: string;
   jobText: string;
 }
-
-const reasoningLlm = new ChatOpenAI({
-  modelName: process.env.REASONING_MODEL ?? "meta-llama/llama-3.1-8b-instruct",
-  temperature: 0,
-  apiKey: process.env.OPENROUTER_API_KEY,
-  configuration: { baseURL: 'https://openrouter.ai/api/v1' },
-});
-
-const writingLlm = new ChatOpenAI({
-  modelName: process.env.WRITING_MODEL ?? "meta-llama/llama-3.1-8b-instruct",
-  temperature: 0.7,
-  apiKey: process.env.OPENROUTER_API_KEY,
-  configuration: { baseURL: 'https://openrouter.ai/api/v1' },
-});
 
 const tavily = new TavilySearch({ maxResults: 5 });
 
@@ -99,10 +90,24 @@ export async function runWorkflow({
     .select({
       customLetterInstructions: userSettings.customLetterInstructions,
       customMsgInstructions: userSettings.customMsgInstructions,
+      openrouterApiKey: userSettings.openrouterApiKey,
     })
     .from(userSettings)
     .where(eq(userSettings.userId, userId))
     .then((rows) => rows[0]);
+
+  let userApiKey: string | undefined;
+  try {
+    userApiKey = userSettingsRow?.openrouterApiKey
+      ? decrypt(userSettingsRow.openrouterApiKey)
+      : undefined;
+  } catch (error) {
+    console.error('Failed to decrypt user OpenRouter API key:', error);
+    userApiKey = undefined;
+  }
+
+  const reasoningLlm = createReasoningLlm(userApiKey);
+  const writingLlm = createWritingLlm(userApiKey);
 
   const run_ResearchCompany = async (state: typeof AgentState.State) => {
     try {
@@ -144,9 +149,10 @@ export async function runWorkflow({
 
       return { company_result: content };
     } catch (error) {
+      const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
       await db
         .update(processTable)
-        .set({ status: ProcessStatus.Failed })
+        .set({ status: ProcessStatus.Failed, statusReason })
         .where(
           and(
             eq(processTable.jobId, jobId),
@@ -190,9 +196,10 @@ export async function runWorkflow({
 
       return { JDMatch_result: result };
     } catch (error) {
+      const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
       await db
         .update(processTable)
-        .set({ status: ProcessStatus.Failed })
+        .set({ status: ProcessStatus.Failed, statusReason })
         .where(
           and(
             eq(processTable.jobId, jobId),
@@ -233,9 +240,10 @@ export async function runWorkflow({
 
       return { feedback_result: result };
     } catch (error) {
+      const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
       await db
         .update(processTable)
-        .set({ status: ProcessStatus.Failed })
+        .set({ status: ProcessStatus.Failed, statusReason })
         .where(
           and(
             eq(processTable.jobId, jobId),
@@ -292,9 +300,10 @@ export async function runWorkflow({
 
       return { cover_letter_result: result };
     } catch (error) {
+      const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
       await db
         .update(processTable)
-        .set({ status: ProcessStatus.Failed })
+        .set({ status: ProcessStatus.Failed, statusReason })
         .where(
           and(
             eq(processTable.jobId, jobId),
@@ -351,9 +360,10 @@ export async function runWorkflow({
 
       return { msg_result: result };
     } catch (error) {
+      const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
       await db
         .update(processTable)
-        .set({ status: ProcessStatus.Failed })
+        .set({ status: ProcessStatus.Failed, statusReason })
         .where(
           and(
             eq(processTable.jobId, jobId),
@@ -383,13 +393,30 @@ export async function runWorkflow({
 
   const app = workflow.compile();
 
-  await app.invoke({
-    job: jobText,
-    resume: resumeText,
-    company_result: '',
-    JDMatch_result: '',
-    feedback_result: '',
-    cover_letter_result: '',
-    msg_result: '',
-  });
+  try {
+    await app.invoke({
+      job: jobText,
+      resume: resumeText,
+      company_result: '',
+      JDMatch_result: '',
+      feedback_result: '',
+      cover_letter_result: '',
+      msg_result: '',
+    });
+  } catch (error) {
+    // When an upstream node throws, its dependent nodes never run and their
+    // process rows stay pending/processing, so the analysis stream would poll
+    // forever. Force any leftover non-terminal rows to failed so the run reaches
+    // a terminal state, carrying the out-of-credit reason when it applies.
+    const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
+    await db
+      .update(processTable)
+      .set({ status: ProcessStatus.Failed, statusReason })
+      .where(
+        and(
+          eq(processTable.jobId, jobId),
+          inArray(processTable.status, [ProcessStatus.Pending, ProcessStatus.Processing])
+        )
+      );
+  }
 }
