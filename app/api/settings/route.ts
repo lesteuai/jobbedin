@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { userSettings } from '@/app/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { handleAsyncAuth } from '@/app/lib/api-handler';
 import { encrypt } from '@/app/lib/crypto';
 
@@ -10,7 +10,7 @@ export const GET = handleAsyncAuth(async (request: NextRequest, session) => {
     .select({
       customLetterInstructions: userSettings.customLetterInstructions,
       customMsgInstructions: userSettings.customMsgInstructions,
-      openrouterApiKey: userSettings.openrouterApiKey,
+      hasOpenrouterApiKey: sql<boolean>`${userSettings.openrouterApiKey} IS NOT NULL`,
     })
     .from(userSettings)
     .where(eq(userSettings.userId, session.user.id));
@@ -19,7 +19,7 @@ export const GET = handleAsyncAuth(async (request: NextRequest, session) => {
   return NextResponse.json({
     customLetterInstructions: row?.customLetterInstructions ?? '',
     customMsgInstructions: row?.customMsgInstructions ?? '',
-    hasOpenrouterApiKey: typeof row?.openrouterApiKey === 'string' && row.openrouterApiKey.length > 0,
+    hasOpenrouterApiKey: row?.hasOpenrouterApiKey ?? false,
   });
 });
 
@@ -61,14 +61,23 @@ export const PUT = handleAsyncAuth(async (request: NextRequest, session) => {
     return NextResponse.json({ success: true });
   }
 
+  const insertValues: {
+    userId: string;
+    customLetterInstructions: string;
+    customMsgInstructions: string;
+    openrouterApiKey?: string | null;
+  } = {
+    userId: session.user.id,
+    customLetterInstructions,
+    customMsgInstructions,
+  };
+  if (shouldSetApiKey) {
+    insertValues.openrouterApiKey = encryptedApiKey;
+  }
+
   await db
     .insert(userSettings)
-    .values({
-      userId: session.user.id,
-      customLetterInstructions,
-      customMsgInstructions,
-      openrouterApiKey: shouldSetApiKey ? encryptedApiKey : null,
-    })
+    .values(insertValues)
     .onConflictDoUpdate({
       target: userSettings.userId,
       set: updateSet,
