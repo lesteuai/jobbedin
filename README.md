@@ -81,6 +81,24 @@ This application prioritizes job roles within the Computer Science (CS) field, a
 - Migrations: Run `pnpm db:migrate` after schema changes in `drizzle/`.
 
 ---
+## Testing
+
+Unit tests run on [Vitest](https://vitest.dev).
+
+```bash
+pnpm test           # Run the full suite once
+pnpm test:watch     # Re-run on file changes
+pnpm test:coverage  # Run with a v8 coverage report
+```
+
+Tests are colocated with the code they cover. The suite runs as two Vitest projects split by file extension:
+
+- `*.test.ts` runs in the Node environment. Use it for library code and API route handlers.
+- `*.test.tsx` runs in jsdom with React Testing Library. Use it for components and hooks.
+
+Shared mocks and render helpers live in `test/`: `db-mock.ts` provides a chainable Drizzle stub, `next-request.ts` builds `NextRequest` objects for route tests, and `render.tsx` wraps components in `AppStoreProvider`. Environment variables the app reads at import time are set in `vitest.setup.ts`, so tests never depend on a local `.env`.
+
+---
 ## Environment Variables
 
 | Key | Description | Example |

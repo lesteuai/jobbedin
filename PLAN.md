@@ -86,44 +86,44 @@ This plan covers the pure logic and request-handling branches that carry real ri
 
 ### Wave 3
 
-- [ ] T8: Tests for `app/api/settings/route.ts`
+- [x] T8: Tests for `app/api/settings/route.ts` (commit d6936c8)
   - Files: `app/api/settings/route.test.ts` (new)
   - Do: mock `@/app/lib/db` with `test/db-mock.ts` and `@/app/lib/auth` for the session. GET: returns stored instructions and `hasOpenrouterApiKey: true` when a row exists; returns `''`/`''`/`false` when no row exists; never returns a raw key field. PUT partial-update matrix, asserting the exact `set` object passed to `onConflictDoUpdate`: instructions only (key untouched); API key only (instructions untouched); `clearOpenrouterApiKey: true` sets `openrouterApiKey: null`; a non-empty `openrouterApiKey` wins over `clearOpenrouterApiKey`; a whitespace-only key counts as absent; an empty body performs no DB write and still returns `{ success: true }`. Assert the stored key is not the plaintext (it goes through `encrypt`) and that `decrypt` of it returns the trimmed input.
   - Done when: every branch of the `updateSet`/`insertValues` construction is asserted, including the no-op path.
 
-- [ ] T9: Tests for `app/api/jobs/[id]/chat/route.ts`
+- [x] T9: Tests for `app/api/jobs/[id]/chat/route.ts` (commit b9818d2)
   - Files: `app/api/jobs/[id]/chat/route.test.ts` (new)
   - Do: mock `@/app/lib/db`, `@/app/lib/auth`, and `@/app/lib/openrouter` (spy `createWritingLlm` returning an object with an `invoke` mock; keep `isOutOfCreditError` behavior). GET: missing/invalid `mode` → 400; job not owned by the session user → 404; no history row → `{ conversation: [] }`; existing history returned as-is. POST: invalid `mode` → 400; unknown job → 404; neither `userMessage` nor `conversation` → 400; `conversation` that is not an array → 400. Clear path: `conversation: []` deletes then re-inserts and returns `{ success: true }`. AI path: prior history is converted to alternating `HumanMessage`/`AIMessage`, the system prompt includes the JD-match, company, resume, and job-description context sections when those rows exist and omits them when absent, the reply is appended to the conversation, and the response is `{ reply }`. Assert an out-of-credit LLM error returns HTTP 402 with an error message, and any other LLM error propagates to a 500.
   - Done when: all validation branches, both POST paths, and the 402 mapping are covered.
 
-- [ ] T10: Tests for `app/api/jobs/[id]/analyze/route.ts`
+- [x] T10: Tests for `app/api/jobs/[id]/analyze/route.ts` (commit 01b18ce)
   - Files: `app/api/jobs/[id]/analyze/route.test.ts` (new)
   - Do: mock `@/app/lib/db`, `@/app/lib/auth`, and `@/app/lib/workflow` (spy on `runWorkflow`). Cover: job not found → 404; all 5 processes `done` → `{ status: 'done' }` with no workflow start and no deletes; a process in `processing` or `pending` → 202 `{ status: 'started' }` with `runWorkflow` NOT called again and no rows cleared; no in-progress process (all failed, or none exist) → the six stale-data deletes run, exactly 5 process rows are inserted with the documented statuses (Company/JDMatch/ResumeFeedback `processing`, Letter/Message `pending`), `runWorkflow` is called once with the job's resume and job text, and the response is 202. Assert `runWorkflow` receives empty strings when `resume.content` or `job.content` is null.
   - Done when: all four states are covered and the insert payload is asserted precisely.
 
-- [ ] T11: Tests for the resume and job CRUD routes
+- [x] T11: Tests for the resume and job CRUD routes (commit ef5b29c)
   - Files: `app/api/jobs/route.test.ts` (new), `app/api/jobs/[id]/route.test.ts` (new), `app/api/resumes/route.test.ts` (new)
   - Do: mock `@/app/lib/db` and `@/app/lib/auth` in each. `app/api/jobs/route.ts`: GET without `resumeId` → 400, with it → the scoped list; POST missing `resumeId` or `content` → 400, valid POST → 201 and the auto-name is `Job N` where N is the existing count plus one (assert `Job 1` for count 0). `app/api/jobs/[id]/route.ts`: GET/DELETE with a missing id → 400, unknown or other-user job → 404, valid GET → the row, valid DELETE → `{ success: true }` after a delete call. `app/api/resumes/route.ts`: POST with no file → 400; `.txt` and `.md` uploads store the decoded text with the extension stripped from the name and return 201 with the new id; an unsupported extension → 400 "Unsupported file type"; a PDF parse failure → 400 "Failed to parse PDF" (mock `pdf-parse` and `pdf-parse/worker`). Build uploads with a real `FormData` and `File`.
   - Done when: all three files pass and every validation branch returns the documented status.
 
-- [ ] T16: Tests for `ChatPanel`
+- [x] T16: Tests for `ChatPanel` (commit 826b5a9)
   - Files: `app/lib/components/ym/ChatPanel.test.tsx` (new)
   - Do: render with a full props object built by a local `makeProps(overrides)` helper. Cover `renderMessages` precedence in order: `pending` or `processing` status shows `Generating your cover letter...` in letter mode and `Generating your message...` in message mode; `failed` status with a known `statusReason` shows the matching `STATUS_REASON_MESSAGE` and with an unknown/null reason shows `Generation failed. Please re-analyze.`; a `done` status with no lines and no typing shows the `(No messages yet...)` placeholder; lines render with the `You: ` / `JobbedIn-AI: ` prefixes and their Markdown text; `isAiTyping` appends a `JobbedIn-AI:` row showing `typingDots`. Also assert: the mode buttons call `setMode` with `letter`/`message` and the active one gets `ym-btn-primary`; the textarea placeholder switches with the mode; typing calls `setChatDraft`; pressing `Enter` calls `handleSend` and does not insert a newline, while `Shift+Enter` is not asserted (the component does not special-case it); Send and Clear are disabled per `canSend`/`canClear` and call their handlers when enabled. Note that `getProcessStatus` must return a terminal status for the input-area assertions, since a non-terminal status only changes the message area.
   - Done when: every `renderMessages` branch and the mode/send/clear interactions pass.
 
-- [ ] T17: Tests for `AnalysisReport`
+- [x] T17: Tests for `AnalysisReport` (commit d60f2a7)
   - Files: `app/lib/components/AnalysisReport.test.tsx` (new)
   - Do: `vi.mock('@/app/lib/components/ym/ChatPanel')` with a marker element so this test targets `AnalysisReport`'s own branching rather than re-testing T16. Build props with a local helper; drive `getProcessStatus`/`getProcessReason` from a plain record. Cover: the header shows `Analysis: <selectedName>`; `← Back to Job` calls `onBack`; all four tabs render, the active one has `data-active="true"`, and clicking one calls `setTab` with its name. Content branches for Company/JDMatch/Feedback: `done` with content renders the markdown; `done` with null content falls through to `Processing...`; `failed` with a known reason shows the mapped message and with an unknown reason shows `Analysis failed for this section.`; any other status shows `Processing...`. Generate tab: both statuses null shows `Generation failed for this section.`; either status `pending`/`processing` shows `Generating...`; either `failed` shows the mapped message for the failed process type, preferring Letter when both failed; both `done` renders the mocked `ChatPanel`.
   - Done when: every branch of `renderTabContent` is covered.
 
 ### Wave 4
 
-- [ ] T18: Tests for the `useChat` hook
+- [x] T18: Tests for the `useChat` hook (commit 101c20a)
   - Files: `app/lib/hooks/use-chat.test.tsx` (new)
   - Do: use `renderHook` from RTL. `vi.mock('@/app/lib/app-store')` so `useAppStore` returns a `showError` spy. Stub `global.fetch` with `vi.fn()` per test and use fake timers for the typing-dots interval. Cover: initial state (`mode` is `message`, both chat lists empty, `chatsLoaded` false); the load effect does not fetch when `tab` is not `Generate` or `selectedJobId` is null; on `tab === 'Generate'` with an id it fetches both the letter and message histories, populates `chats`, and sets `chatsLoaded`; a non-ok response calls `showError` and leaves `chatsLoaded` false. `canSend` is false for an empty or whitespace draft and true for a non-empty one; `canClear` follows the current mode's line count. `handleSend`: optimistically appends the user line and clears the draft, POSTs `{ mode, userMessage }`, appends the AI reply on success, and on failure calls `showError` with the server's `error` message, restores the draft, and removes the optimistic line. `handleClear`: empties the current mode's lines and the draft, and POSTs `{ mode, conversation: [] }`; a rejected fetch is swallowed without calling `showError`. Also assert the typing dots cycle `.` → `..` → `...` → `.` on 400ms ticks while `isAiTyping` and stop after it clears.
   - Done when: the load, send, clear, and typing-dot behaviors all pass with no unhandled promise rejections.
 
-- [ ] T19: Tests for `AppStoreProvider` and `apiErrorMessage`
+- [x] T19: Tests for `AppStoreProvider` and `apiErrorMessage` (commit d4cc342)
   - Files: `app/lib/app-store.test.tsx` (new)
   - Do: `vi.mock('@/app/lib/auth/client')` so `useSession` returns a controllable value. Test `apiErrorMessage` directly: a JSON body with `error` returns it; JSON without `error` returns the fallback; a body whose `json()` rejects returns the fallback. Then use `renderHook` with `AppStoreProvider` as the wrapper and a stubbed `global.fetch`. Cover: `useAppStore` outside the provider throws `useAppStore must be inside AppStoreProvider`; with a session, resumes are fetched on mount and a failed fetch surfaces the error modal text; `addJob` throws `No resume selected` when none is selected, and on success POSTs the selected `resumeId` plus content and appends the returned job; `deleteResume`/`deleteJob` remove the item and null out the selection when the deleted id was selected, and on a non-ok response call `showError` and rethrow; `selectResume`/`selectJob` skip the fetch when the item is already loaded with content and otherwise fetch and merge it; `selectJob(null)` clears the selection without fetching; `clearStore` empties everything; `showError` renders `YmErrorModal` and its OK button dismisses it.
   - Done when: every store action's success and failure path is covered and the error modal round-trip passes.
