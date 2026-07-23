@@ -17,6 +17,7 @@ export default function ResumesPage() {
     resumes,
     selectedResumeId,
     selectResume,
+    selectJob,
     deleteResume,
     refreshResumes,
     showError,
@@ -120,7 +121,10 @@ export default function ResumesPage() {
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <YmButton
                 variant="primary"
-                onClick={() => router.push(`/resumes/${selectedResumeId}`)}
+                onClick={() => {
+                  selectJob(null);
+                  router.push(`/resumes/${selectedResumeId}`);
+                }}
               >
                 To Job →
               </YmButton>

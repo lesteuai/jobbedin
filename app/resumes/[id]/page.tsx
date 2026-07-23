@@ -21,7 +21,7 @@ export default function ResumesJobsPage() {
   const params = useParams();
   const resumeId = typeof params.id === 'string' ? params.id : '';
   const { data: session, isPending } = useSession();
-  const { jobs, selectedJobId, selectJob, addJob, deleteJob, showError, setJobs } = useAppStore();
+  const { jobs, selectedJobId, selectJob, selectedResumeId, selectResume, addJob, deleteJob, showError, setJobs } = useAppStore();
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [view, setView] = useState<View>('idle');
   const [draft, setDraft] = useState('');
@@ -59,8 +59,15 @@ export default function ResumesJobsPage() {
   useEffect(() => {
     if (resumeId && session?.user?.id) {
       fetchJobs(resumeId);
+      selectJob(null);
     }
   }, [resumeId, session?.user?.id]);
+
+  useEffect(() => {
+    if (resumeId && session?.user?.id && selectedResumeId !== resumeId) {
+      selectResume(resumeId);
+    }
+  }, [resumeId, session?.user?.id, selectedResumeId]);
 
   const selected = jobs.find((j) => j.id === selectedJobId);
   const pendingName = jobs.find((j) => j.id === pendingDelete)?.name;
