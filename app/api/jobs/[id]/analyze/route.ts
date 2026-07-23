@@ -3,6 +3,11 @@ import { db } from '@/app/lib/db';
 import {
   resumeJob,
   process as processTable,
+  company,
+  jobDescriptionMatch,
+  resumeFeedback,
+  coverLetterHistory,
+  messageGenHistory,
   ProcessType,
   ProcessStatus,
 } from '@/app/lib/db/schema';
@@ -44,6 +49,17 @@ export const POST = handleAsyncAuth(async (request: NextRequest, session, { para
   );
 
   if (!isInProgress) {
+    // Clear stale run before starting a fresh one (prior run left failed/terminal state)
+    const userScopedJob = and(eq(processTable.jobId, jobId), eq(processTable.userId, session.user.id));
+    await Promise.all([
+      db.delete(processTable).where(userScopedJob),
+      db.delete(company).where(and(eq(company.jobId, jobId), eq(company.userId, session.user.id))),
+      db.delete(jobDescriptionMatch).where(and(eq(jobDescriptionMatch.jobId, jobId), eq(jobDescriptionMatch.userId, session.user.id))),
+      db.delete(resumeFeedback).where(and(eq(resumeFeedback.jobId, jobId), eq(resumeFeedback.userId, session.user.id))),
+      db.delete(coverLetterHistory).where(and(eq(coverLetterHistory.jobId, jobId), eq(coverLetterHistory.userId, session.user.id))),
+      db.delete(messageGenHistory).where(and(eq(messageGenHistory.jobId, jobId), eq(messageGenHistory.userId, session.user.id))),
+    ]);
+
     await db.insert(processTable).values([
       { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.Company, status: ProcessStatus.Processing },
       { id: randomUUID(), userId: session.user.id, jobId, processType: ProcessType.JDMatch, status: ProcessStatus.Processing },
