@@ -8,6 +8,7 @@ import rehypeKatex from 'rehype-katex';
 import { YmButton } from './YmButton';
 import { ProcessStatus, ProcessType } from '@/app/lib/db/schema';
 import type { Mode, ChatLine } from '@/app/lib/hooks/use-chat';
+import { STATUS_REASON_MESSAGE } from '@/app/lib/constants';
 
 const PLACEHOLDER: Record<Mode, string> = {
   letter: 'Tell me how you want your letter to be like: tone, content highlights, etc',
@@ -54,14 +55,11 @@ export function ChatPanel({
       );
     }
     if (modeStatus === ProcessStatus.Failed) {
-      if (modeReason === 'out_of_credit') {
-        return (
-          <div style={{ color: '#c00', fontStyle: 'italic' }}>
-            OpenRouter is out of credit. Add your own OpenRouter API key in Settings, then re-analyze.
-          </div>
-        );
-      }
-      return <div style={{ color: '#c00', fontStyle: 'italic' }}>Generation failed. Please re-analyze.</div>;
+      return (
+        <div style={{ color: '#c00', fontStyle: 'italic' }}>
+          {STATUS_REASON_MESSAGE[modeReason ?? ''] ?? 'Generation failed. Please re-analyze.'}
+        </div>
+      );
     }
     if (lines.length === 0 && !isAiTyping) {
       return <div style={{ color: '#888', fontStyle: 'italic' }}>(No messages yet. Start typing below.)</div>;
