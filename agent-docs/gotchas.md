@@ -138,6 +138,15 @@ Located in `app/lib/email.ts`, exported as `EMAIL_ENABLED = process.env.EMAIL_EN
 - Transient JSON parse errors ignored (malformed messages skipped)
 - Treat all stream errors as terminal (stop trying, set isAnalyzing=false)
 
+## Process Status Reasons
+
+Process `statusReason` values are centralized in app/lib/constants.ts:
+- `STATUS_REASON.OUT_OF_CREDIT` ('out_of_credit') — HTTP 402 from LLM API
+- `STATUS_REASON.INVALID_API_KEY` ('invalid_api_key') — HTTP 401 from LLM API (user key validation failed)
+- `STATUS_REASON_MESSAGE` maps each reason to user-facing text
+
+Frontend and components (AnalysisReport, ChatPanel) source failure messages from `STATUS_REASON_MESSAGE` instead of hardcoding strings. Do not hardcode failure reasons in components; always import from constants.ts.
+
 ## LangGraph Workflow Issues
 
 ### Missing API Keys
@@ -150,19 +159,45 @@ Located in `app/lib/email.ts`, exported as `EMAIL_ENABLED = process.env.EMAIL_EN
 **TAVILY_API_KEY missing:** ResearchCompany node fails
 - Same silent failure pattern
 
-### Out-of-Credit Detection (HTTP 402)
+### Out-of-Credit and Invalid API Key Detection (HTTP 402 and HTTP 401)
 
-**Detection mechanism:** Each node catches errors and checks `isOutOfCreditError()`, which detects APIError with status/code === 402
+**Detection mechanism:** 
+- `isOutOfCreditError()` detects HTTP 402 (APIError with status/code === 402)
+- `isAuthError()` detects HTTP 401 (AuthenticationError with status/code === 401)
+- `resolveStatusReason(error)` maps errors to statusReason: OUT_OF_CREDIT takes precedence (checked first), then INVALID_API_KEY
 
-**When out-of-credit:**
+**When out-of-credit (HTTP 402):**
 - Process status set to Failed with statusReason = 'out_of_credit'
-- SSE stream includes statusReason in payload (frontend can render "out of credit" message)
-- If user has their own API key set, it's used exclusively (no fallback to server key on 402)
+- SSE stream includes statusReason in payload
+- Frontend renders user message: "Free trial is over. Add your own OpenRouter API key in Settings, then re-analyze."
+- If user has their own API key set, it's used exclusively (no fallback on 402)
 - If user does not have key, 402 indicates server key is out of credit
 
-**Stream terminal state guarantee:** After workflow.invoke() completes or throws, app.invoke() catch updates any leftover pending/processing processes to Failed. Ensures SSE stream doesn't hang if upstream node fails (e.g., Company fails → Letter/Message never run → their rows stay pending without cleanup)
+**When invalid API key (HTTP 401):**
+- Process status set to Failed with statusReason = 'invalid_api_key'
+- SSE stream includes statusReason in payload
+- Frontend renders user message indicating user key is invalid
+- Usually means user-provided key is wrong or expired; check Settings
 
-**Gotcha:** Decrypt of user API key can fail (malformed payload, wrong BETTER_AUTH_SECRET). On decrypt error, userApiKey set to undefined and server key is used silently. Console logs the error but frontend doesn't know key loading failed.
+**Stream terminal state guarantee:** After workflow.invoke() completes or throws, outer catch updates any leftover pending/processing processes to Failed. Ensures SSE stream doesn't hang if upstream node fails (e.g., Company fails → Letter/Message never run → their rows stay pending without cleanup)
+
+**Gotcha:** Decrypt of user API key can fail (malformed payload, wrong BETTER_AUTH_SECRET). On decrypt error, LLM factory falls back to server key silently. Console logs the error but frontend doesn't know key loading failed. If server key also fails (e.g., out of credit), process marked failed appropriately.
+
+### Gibberish Detection and Retry
+
+Research nodes (ResearchCompany, CrossRef) check generated output for gibberish:
+
+**Detection:** `isGibberish(text)` heuristic detects excessive repetition or low token diversity via simple string analysis.
+
+**Retry logic:**
+1. Generate output
+2. If gibberish detected, retry generation once
+3. If still gibberish after retry, node fails with statusReason; output never persisted
+4. If clean, output persists to database
+
+**Why:** LLM models can occasionally produce degenerate output (token sequences repeated, low diversity). Single retry often recovers; if not, it's typically a deeper issue (model state, extreme temperature) warranting failure rather than persisting garbage data.
+
+**Note:** Gibberish check is heuristic-based and may have false negatives (degenerate text passes) or false positives (legitimate short text fails). Monitor logs if gibberish detections seem off.
 
 ### Fire-and-Forget Execution
 
@@ -204,6 +239,23 @@ The `/api/settings` PUT route supports partial updates to avoid clobbering unmod
 - If fetch fails, throws after calling `showError()`
 - Callers (like handleSelect) catch exception
 - Failed fetch keeps current view; doesn't switch
+
+## Re-analysis Cleanup
+
+When re-analyzing a job, the `/api/jobs/[id]/analyze` endpoint clears stale data:
+
+**Process:**
+1. Check if existing process rows exist for this jobId
+2. If found: delete all process records + all prior result rows (company, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history)
+3. Insert fresh 5 process records
+4. Workflow executes with clean slate
+
+**Prevents:**
+- Duplicate process rows from accumulating across multiple re-analysis attempts
+- Stale results from appearing alongside new results
+- Confused UI state (e.g., failed processes lingering while new analysis runs)
+
+**Gotcha:** Clears both process and result records; if a user re-analyzes while viewing results, UI briefly shows empty state until new results arrive. This is intentional to avoid showing mixed (old + new) results.
 
 ## TypeScript & Type Safety
 

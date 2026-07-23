@@ -14,9 +14,9 @@ JobbedIn is a Next.js 16 full-stack application with a Yahoo Messenger (2000s) d
 
 - **Frontend**: React components with `use client`, AppStore context for state, Yahoo Messenger design system (`ym-` classes); chat and analysis display use ReactMarkdown for styled content rendering
 - **Authentication**: better-auth 1.6.11 with email/password flow; email verification (optional via EMAIL_ENABLED flag); password reset via emailed token; account deletion with optional email confirmation; password change for authenticated users; resend email controls with 30s cooldown; session validation on all API routes
-- **Database**: PostgreSQL + Drizzle ORM; all data scoped to userId; migrations in `drizzle/`; userSettings table for per-user AI customization (custom prompts, encrypted OpenRouter API key); process table tracks per-node status and failure reasons (e.g., 'out_of_credit' for HTTP 402 errors)
-- **API**: Next.js App Router routes; `handleAsync` and `handleAsyncAuth` wrappers for error handling and session validation; all routes return 401 if session invalid; settings API supports PUT with partial updates (preserves unmodified fields)
-- **AI Workflow**: LangGraph StateGraph with 5 parallel/sequential nodes (ResearchCompany, CrossRef, ResumeFeedback → GenerateLetter, GenerateMsg); fire-and-forget execution; results and process status streamed to client via SSE (Server-Sent Events); custom user instructions and per-user API keys loaded from userSettings; out-of-credit (HTTP 402) detection marks processes with statusReason and ensures stream reaches terminal state even if upstream node fails; LLM factories support optional user-provided OpenRouter key with fallback to server key
+- **Database**: PostgreSQL + Drizzle ORM; all data scoped to userId; migrations in `drizzle/`; userSettings table for per-user AI customization (custom prompts, encrypted OpenRouter API key); process table tracks per-node status and failure reasons ('out_of_credit' for HTTP 402, 'invalid_api_key' for HTTP 401); statusReason values and messages centralized in app/lib/constants.ts
+- **API**: Next.js App Router routes; `handleAsync` and `handleAsyncAuth` wrappers for error handling and session validation; all routes return 401 if session invalid; settings API GET checks API-key existence via `IS NOT NULL` (returns hasOpenrouterApiKey boolean, never raw key), PUT supports partial updates (only updates fields in request body, preserves unmodified fields); analyze route clears stale processes before restarting workflow
+- **AI Workflow**: LangGraph StateGraph with 5 parallel/sequential nodes (ResearchCompany, CrossRef, ResumeFeedback → GenerateLetter, GenerateMsg); fire-and-forget execution; results and process status streamed to client via SSE (Server-Sent Events); custom user instructions and encrypted per-user API keys loaded from userSettings; LLM factories decrypt user key internally and fall back to server key on failure; out-of-credit (HTTP 402) and invalid API key (HTTP 401) detection sets statusReason and ensures stream reaches terminal state even if upstream node fails; research nodes detect gibberish output and retry generation once before failing
 
 ## Directory Structure
 
@@ -31,9 +31,10 @@ app/
 │   ├── db/                 # Drizzle schema and database client
 │   ├── api-handler.ts      # Error handling and session validation (handleAsync, handleAsyncAuth)
 │   ├── app-store.tsx       # Global state management
-│   ├── workflow.ts         # LangGraph workflow definition with custom prompt loading and out-of-credit handling
+│   ├── constants.ts        # Shared constants (STATUS_REASON, STATUS_REASON_MESSAGE for process failure reasons)
+│   ├── workflow.ts         # LangGraph workflow definition with custom prompt loading and out-of-credit/invalid-key handling
 │   ├── system-prompt.ts    # Centralized LLM prompts with custom instruction support
-│   ├── openrouter.ts       # LLM factories (createReasoningLlm, createWritingLlm) and HTTP 402 detection
+│   ├── openrouter.ts       # LLM factories (createReasoningLlm, createWritingLlm); detect 401/402 errors
 │   └── crypto.ts           # Encryption/decryption (AES-256-GCM) for storing user API keys
 ├── resumes/                # [id]/ job analysis hub
 ├── settings/               # User settings: password change, custom AI prompts, OpenRouter API key

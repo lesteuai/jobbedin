@@ -27,7 +27,7 @@ type Store = {
   
   addJob(content: string): Promise<string>;  // Returns jobId
   deleteJob(id: string): Promise<void>;
-  selectJob(id: string | null): Promise<void>;  // async, lazy-loads job content
+  selectJob(id: string | null): Promise<void>;  // async, lazy-loads job content; null clears selection
   clearStore(): void;  // reset all state on sign-out
   showError(message: string): void;
   setJobs(jobs: Item[]): void;  // Internal helper for polling
@@ -41,11 +41,12 @@ type Store = {
 - `refreshResumes()` only executes once session is present
 - Prevents spurious 401 errors on page load when session still resolving
 
-**Lazy job loading:**
+**Lazy job loading & selection clearing:**
 - `selectJob(id)` checks if job content is already loaded (detects by presence of content field)
 - If not loaded, fetches full job data from `GET /api/jobs/${id}`
 - Once loaded, subsequent calls skip the fetch
 - If fetch fails, throws after calling `showError()`; callers catch the exception
+- `selectJob(null)` clears selectedJobId without fetching (used to deselect before navigation)
 
 **Clear on sign-out:**
 - `clearStore()` resets all in-memory state (resumes, jobs, selected items)
@@ -65,6 +66,10 @@ type Store = {
 3. API returns new resume with id
 4. Call `refreshResumes()` to update list
 5. Call `selectResume(newId)` to select and display it
+
+**Deep-link sync (direct navigation to /resumes/[id]):**
+- Page calls `selectResume(resumeId)` on mount via useParams()
+- Syncs store's selectedResumeId with URL, enabling store-dependent actions (adding job, back-navigation highlighting)
 
 ## Usage in Components
 

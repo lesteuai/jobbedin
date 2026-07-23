@@ -28,14 +28,14 @@ Located in `app/lib/db/schema.ts`. Uses PostgreSQL with Drizzle ORM for type-saf
 - `message_gen_history` — Generated recruiter messages + chat refinement history
   - jobId (UUID PK, FK to resume_jobs), userId, conversation (JSON array of ChatLine[]), createdAt, updatedAt
 - `processes` — Workflow node status tracking
-  - id (UUID PK), userId, jobId (FK to resume_jobs), processType (text), status (text: pending|processing|done|failed), statusReason (text, nullable: 'out_of_credit'), createdAt, updatedAt
+  - id (UUID PK), userId, jobId (FK to resume_jobs), processType (text), status (text: pending|processing|done|failed), statusReason (text, nullable: 'out_of_credit'|'invalid_api_key'), createdAt, updatedAt
 - `user_settings` — Per-user AI generation preferences and API key storage
   - userId (text PK, FK to user), customLetterInstructions (text), customMsgInstructions (text), openrouterApiKey (text, nullable, encrypted with AES-256-GCM), createdAt, updatedAt
 
 **Key constraints:**
 - All non-auth tables have userId FK (user.id) and $onUpdate timestamps
 - All job-related records reference resume_jobs.id via jobId
-- process table tracks 5 node types: 'company', 'jdmatch', 'feedback', 'letter', 'message'; statusReason set to 'out_of_credit' when HTTP 402 occurs
+- process table tracks 5 node types: 'company', 'jdmatch', 'feedback', 'letter', 'message'; statusReason set when error occurs (values: 'out_of_credit' for HTTP 402, 'invalid_api_key' for HTTP 401; see app/lib/constants.ts)
 - cover_letter_history and message_gen_history use jobId as PK (one record per job)
 - user_settings uses userId as PK (one record per user); custom prompts and API key are optional (null if not set); openrouterApiKey stored encrypted
 
@@ -221,7 +221,7 @@ Missing TAVILY_API_KEY causes ResearchCompany node to fail silently.
   "hasOpenrouterApiKey": boolean
 }
 ```
-Note: `hasOpenrouterApiKey` is boolean only; raw encrypted key never returned to client.
+Note: Queries user_settings row and checks `openrouterApiKey IS NOT NULL` via SQL expression; never retrieves encrypted ciphertext. Returns `hasOpenrouterApiKey` as boolean only; raw encrypted key never sent to client.
 
 **PUT** — Updates user settings (partial; only updates fields present in body):
 ```json
@@ -245,9 +245,23 @@ Note: `hasOpenrouterApiKey` is boolean only; raw encrypted key never returned to
 **Behavior:**
 - Only fields present in request body are updated (partial update semantics)
 - Saving API key does not clobber custom instructions; vice versa
+- openrouterApiKey written only when request includes openrouterApiKey or clearOpenrouterApiKey field (explicit set/clear intent); unmodified key is not written
 - openrouterApiKey trimmed and encrypted before storage
 - Upsert pattern: insert with defaults if row missing, else update only specified fields
 - If no fields to update (empty body), returns 200 with no changes
+
+## Re-analysis Cleanup (app/api/jobs/[id]/analyze/route.ts)
+
+When re-analyzing a job whose prior run left failed or terminal processes, the route clears stale data before restarting:
+
+**Cleanup steps:**
+1. Check if any existing process rows exist for this jobId
+2. If found, delete all process records scoped to (jobId, userId)
+3. Delete all prior result rows scoped to (jobId, userId) across: company, job_description_match, resume_feedbacks, cover_letter_history, message_gen_history
+4. Insert fresh 5 process records with status='pending' or 'processing' and statusReason=null
+5. Workflow executes with clean slate
+
+**Rationale:** Prevents duplicate process rows and stale results from accumulating when users re-analyze the same job multiple times.
 
 ## Encryption (app/lib/crypto.ts)
 
@@ -263,14 +277,25 @@ Note: `hasOpenrouterApiKey` is boolean only; raw encrypted key never returned to
 - Throws on malformed payload or auth tag mismatch
 
 **Usage in workflow and chat:**
+Workflow passes encrypted openrouterApiKey directly to LLM factories:
 ```typescript
-let userApiKey: string | undefined;
-try {
-  userApiKey = userSettingsRow?.openrouterApiKey
-    ? decrypt(userSettingsRow.openrouterApiKey)
-    : undefined;
-} catch (error) {
-  console.error('Failed to decrypt user OpenRouter API key:', error);
-  userApiKey = undefined;  // Fallback to server key
+const reasoningLlm = createReasoningLlm(userSettingsRow?.openrouterApiKey);
+```
+
+LLM factories handle decryption internally:
+```typescript
+export function createReasoningLlm(encryptedApiKey?: string | null): ChatOpenAI {
+  let apiKey = process.env.OPENROUTER_API_KEY;
+  if (encryptedApiKey) {
+    try {
+      apiKey = decrypt(encryptedApiKey);  // Decrypt internally
+    } catch (error) {
+      console.error('Failed to decrypt user key:', error);
+      // Falls back to process.env.OPENROUTER_API_KEY
+    }
+  }
+  return new ChatOpenAI({ apiKey, ... });
 }
 ```
+
+Caller no longer decrypts or handles fallback logic.

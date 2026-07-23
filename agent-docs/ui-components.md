@@ -45,7 +45,10 @@ Chat UI component for cover letter/message refinement.
 
 **UI elements:**
 - Mode switcher (Cover Letter / Message)
-- Process status display (shows "Generating your..." when pending/processing; "Generation failed" if failed)
+- Process status display:
+  - When pending/processing: shows "Generating your..."
+  - When done and lines exist: shows scrollable chat conversation
+  - When failed or done but no lines: hides chat input and shows failure message (sourced from STATUS_REASON_MESSAGE constant via statusReason, e.g., "Free trial is over. Add your own OpenRouter API key in Settings, then re-analyze.")
 - Scrollable message list with markdown rendering (ReactMarkdown with gfm + math plugins)
 - User and AI messages prefixed with "You:" and "JobbedIn-AI:"
 - Textarea input (Enter to send; Shift+Enter for newline)
@@ -59,6 +62,11 @@ Chat UI component for cover letter/message refinement.
   - Lists (unordered/ordered)
   - Links
   - Math expressions (via rehype-katex)
+
+**Failure message handling:**
+- Failure reasons sourced from app/lib/constants.ts STATUS_REASON_MESSAGE
+- Specific messages for out_of_credit and invalid_api_key
+- Generic fallback if statusReason unknown
 
 ### Sidebar.tsx
 Reusable sidebar for list management (resumes, jobs, etc.).

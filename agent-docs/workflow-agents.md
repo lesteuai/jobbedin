@@ -27,6 +27,11 @@ Writes results to `company` table.
 - @langchain/tavily (TavilySearch tool)
 - Requires TAVILY_API_KEY env var
 
+**Quality assurance:**
+- Generated content checked for gibberish via isGibberish(text) heuristic (detects excessive repetition, low token diversity)
+- If gibberish detected, generation is retried once
+- If still degenerate after retry, node fails with statusReason; gibberish is never persisted
+
 ### CrossRef
 Compares candidate resume against job description:
 - Skill match analysis
@@ -36,6 +41,11 @@ Compares candidate resume against job description:
 Writes to `job_description_match` table.
 
 **Prompt:** `cross_reference_prompt` from system-prompt.ts
+
+**Quality assurance:**
+- Generated content checked for gibberish via isGibberish(text) heuristic
+- If gibberish detected, generation is retried once
+- If still degenerate after retry, node fails with statusReason; gibberish is never persisted
 
 ### ResumeFeedback
 Critical review of resume:
@@ -94,19 +104,23 @@ export const generate_msg_prompt = "...";    // Recruiter message
 
 **LLM factories** (replace per-route instantiation):
 ```typescript
-export function createReasoningLlm(apiKey?: string | null): ChatOpenAI
-export function createWritingLlm(apiKey?: string | null): ChatOpenAI
+export function createReasoningLlm(encryptedApiKey?: string | null): ChatOpenAI
+export function createWritingLlm(encryptedApiKey?: string | null): ChatOpenAI
 ```
 
 Both factories:
-- Accept optional user API key (from decrypted user_settings.openrouterApiKey)
-- Resolve to user key if provided and non-empty; otherwise fall back to process.env.OPENROUTER_API_KEY
+- Accept optional encrypted user API key (from user_settings.openrouterApiKey)
+- Decrypt key internally via crypto.decrypt(); catch silently and fall back to process.env.OPENROUTER_API_KEY on failure
+- Resolve to user key if decryption succeeds and key is non-empty; otherwise fall back to server key
 - Always use baseURL: 'https://openrouter.ai/api/v1'
+- Include maxTokens: 4096 to prevent token degeneration
+- Include modelKwargs: { frequency_penalty: 0.3 } to reduce repetition/gibberish
+- Detect HTTP 401 (invalid API key) via isAuthError() and HTTP 402 (out of credit) via isOutOfCreditError()
 
 **Usage in workflow nodes:**
 ```typescript
-const reasoningLlm = createReasoningLlm(userApiKey);
-const writingLlm = createWritingLlm(userApiKey);
+const reasoningLlm = createReasoningLlm(userSettingsRow.openrouterApiKey);  // Pass encrypted key
+const writingLlm = createWritingLlm(userSettingsRow.openrouterApiKey);
 
 const response = await reasoningLlm.invoke([
   new SystemMessage(prompt),
@@ -115,11 +129,11 @@ const response = await reasoningLlm.invoke([
 ```
 
 **Per-user key flow in workflow:**
-1. Fetch user settings row (customLetterInstructions, customMsgInstructions, openrouterApiKey)
-2. Attempt decrypt(openrouterApiKey); catch silently and set userApiKey = undefined
-3. Pass userApiKey to both createReasoningLlm and createWritingLlm
-4. If user key present and valid, it's used exclusively (no fallback)
-5. If user key absent or decrypt failed, server key (OPENROUTER_API_KEY) is used
+1. Fetch user settings row (customLetterInstructions, customMsgInstructions, openrouterApiKey encrypted)
+2. Pass encrypted openrouterApiKey directly to createReasoningLlm() and createWritingLlm()
+3. Each factory decrypts key internally; on success, uses decrypted key exclusively
+4. On decrypt failure or empty key, factory falls back to server key (OPENROUTER_API_KEY)
+5. Caller no longer handles decryption or fallback logic
 
 ## Process Status Tracking
 
@@ -132,23 +146,28 @@ process {
   userId: UUID,
   processType: 'company' | 'jdmatch' | 'feedback' | 'letter' | 'message',
   status: 'pending' | 'processing' | 'done' | 'failed',  // from ProcessStatus enum
-  statusReason: 'out_of_credit' | null,  // set when error is HTTP 402
+  statusReason: 'out_of_credit' | 'invalid_api_key' | null,  // from STATUS_REASON constant (app/lib/constants.ts)
   createdAt: Date,
   updatedAt: Date
 }
 ```
+
+**Status reason values** (app/lib/constants.ts):
+- `STATUS_REASON.OUT_OF_CREDIT` ('out_of_credit') — HTTP 402 error from LLM API (out of credit)
+- `STATUS_REASON.INVALID_API_KEY` ('invalid_api_key') — HTTP 401 error from LLM API (user key is invalid)
+- `STATUS_REASON_MESSAGE` maps each reason to user-facing text: "Free trial is over. Add your own OpenRouter API key in Settings, then re-analyze." for out_of_credit, etc.
 
 **Node status lifecycle:**
 1. 'processing' for first 3 nodes (Company, CrossRef, ResumeFeedback) when workflow starts (set by analyze endpoint)
 2. 'pending' for Letter and Message nodes initially
 3. 'processing' for Letter and Message when they start (depends on Company + CrossRef)
 4. 'done' or 'failed' upon completion
-5. On failure, statusReason set to 'out_of_credit' if error is HTTP 402 (detected via isOutOfCreditError)
+5. On failure, statusReason set via resolveStatusReason(error) which checks precedence: OUT_OF_CREDIT (HTTP 402) takes priority, then INVALID_API_KEY (HTTP 401)
 
-**Out-of-credit detection** — In each node's catch block:
+**Error detection and status resolution** — In each node's catch block:
 ```typescript
 catch (error) {
-  const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
+  const statusReason = resolveStatusReason(error);  // Returns OUT_OF_CREDIT or INVALID_API_KEY or null
   await db.update(processTable).set({ status: ProcessStatus.Failed, statusReason });
   throw error;  // Propagate to workflow.invoke() catch
 }
@@ -157,7 +176,7 @@ catch (error) {
 **Terminal state guarantee** — After workflow.invoke() completes or throws:
 ```typescript
 catch (error) {
-  const statusReason = isOutOfCreditError(error) ? 'out_of_credit' : null;
+  const statusReason = resolveStatusReason(error);
   // Mark any leftover pending/processing rows as failed
   await db.update(processTable).set({ status: ProcessStatus.Failed, statusReason })
     .where(and(
@@ -177,7 +196,7 @@ Ensures SSE stream reaches terminal state even if upstream node throws (e.g., Co
   ]
 }
 ```
-Client can render out-of-credit messaging based on statusReason.
+Client maps statusReason via STATUS_REASON_MESSAGE and renders user-facing failure message.
 
 ## Execution Model
 

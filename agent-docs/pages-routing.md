@@ -97,11 +97,11 @@ API routes (all session-validated, userId-scoped):
 - Resume list, selection, markdown preview
 - Hidden file input for upload (triggers userId-scoped API POST)
 - Supports .pdf, .txt, .md file types
-- "To Job" button navigates to `/resumes/${selectedResumeId}`
+- "To Job" button: calls selectJob(null) to clear selected job, then navigates to `/resumes/${selectedResumeId}` (prevents phantom-highlighted job state on destination page)
 
 ### app/resumes/[id]/page.tsx
 - Accepts resumeId from URL via useParams()
-- Calls selectResume(resumeId) on mount
+- Calls selectResume(resumeId) on mount to sync store state (enables store-dependent actions like adding job and back-navigation)
 - Manages job list (add, delete, select)
 - SSE stream after "Analyze" click: EventSource connects to `/api/jobs/[id]/analysis-stream`
 - Server pushes workflow results + process statuses every 1s; client updates UI reactively
@@ -110,6 +110,8 @@ API routes (all session-validated, userId-scoped):
 - Delegates chat logic to useChat hook
 - handleSelect(id) is async, awaits selectJob(id) before switching view (catches errors, keeps current view on failure)
 - addJob onClick is async, awaits both addJob() and selectJob(id) in sequence
+- AnalysisReport displays tabs: Company (research), JDMatch, Feedback (all show specific failure reasons via STATUS_REASON_MESSAGE if failed), Generate (shows ChatPanel on success; on generation failure hides ChatPanel and displays failure reason)
+- "To Job" button clears selected job (selectJob(null)) before navigating so Jobs screen doesn't open with phantom-highlighted job and empty panel
 
 ## API Routes Detail
 
