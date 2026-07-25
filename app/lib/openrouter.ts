@@ -35,24 +35,12 @@ export function createWritingLlm(encryptedApiKey?: string | null): ChatOpenAI {
   });
 }
 
-interface ApiErrorShape {
-  constructor?: { name?: string };
-  status?: number;
-  code?: number | string;
+function defineErrorCode(error: unknown): number | undefined {
+  if (typeof error !== 'object' || error === null) return undefined;
+  const e = error as { status?: number; code?: number | string };
+  const errorCode = e.status ?? Number(e.code);
+  return errorCode;
 }
 
-function isApiErrorShape(error: unknown): error is ApiErrorShape {
-  return typeof error === 'object' && error !== null;
-}
-
-export function isOutOfCreditError(error: unknown): boolean {
-  if (!isApiErrorShape(error)) return false;
-  if (error.constructor?.name !== 'APIError') return false;
-  return error.status === 402 || Number(error.code) === 402;
-}
-
-export function isAuthError(error: unknown): boolean {
-  if (!isApiErrorShape(error)) return false;
-  if (error.constructor?.name !== 'AuthenticationError') return false;
-  return error.status === 401 || Number(error.code) === 401;
-}
+export const isOutOfCreditError = (e: unknown) => defineErrorCode(e) === 402;
+export const isAuthError = (e: unknown) => defineErrorCode(e) === 401;
