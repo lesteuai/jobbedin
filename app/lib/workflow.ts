@@ -42,7 +42,7 @@ import { STATUS_REASON } from '@/app/lib/constants';
 function resolveStatusReason(error: unknown): string | null {
   if (isOutOfCreditError(error)) return STATUS_REASON.OUT_OF_CREDIT;
   if (isAuthError(error)) return STATUS_REASON.INVALID_API_KEY;
-  return null;
+  return error instanceof Error ? error.message : null;
 }
 
 // Detects degenerate LLM output: empty text, runs of replacement/control
