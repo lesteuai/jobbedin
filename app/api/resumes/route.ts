@@ -41,6 +41,8 @@ export const POST = handleAsyncAuth(async (request: NextRequest, session) => {
     try {
       const parser = new PDFParse({ data: buffer });
       const textResult = await parser.getText();
+      // Remove page footer
+	    textResult.text = textResult.text.replace(/--\s*\d+\s*of\s*\d+\s*--/g, '');
       content = textResult.text;
     } catch (error) {
       console.log(`Error parsing PDF: ${error}`);
