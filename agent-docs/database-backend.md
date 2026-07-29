@@ -28,14 +28,14 @@ Located in `app/lib/db/schema.ts`. Uses PostgreSQL with Drizzle ORM for type-saf
 - `message_gen_history` — Generated recruiter messages + chat refinement history
   - jobId (UUID PK, FK to resume_jobs), userId, conversation (JSON array of ChatLine[]), createdAt, updatedAt
 - `processes` — Workflow node status tracking
-  - id (UUID PK), userId, jobId (FK to resume_jobs), processType (text), status (text: pending|processing|done|failed), statusReason (text, nullable: 'out_of_credit'|'invalid_api_key'), createdAt, updatedAt
+  - id (UUID PK), userId, jobId (FK to resume_jobs), processType (text), status (text: pending|processing|done|failed), statusReason (text, nullable: 'out_of_credit'|'invalid_api_key'|error message), createdAt, updatedAt
 - `user_settings` — Per-user AI generation preferences and API key storage
   - userId (text PK, FK to user), customLetterInstructions (text), customMsgInstructions (text), openrouterApiKey (text, nullable, encrypted with AES-256-GCM), createdAt, updatedAt
 
 **Key constraints:**
 - All non-auth tables have userId FK (user.id) and $onUpdate timestamps
 - All job-related records reference resume_jobs.id via jobId
-- process table tracks 5 node types: 'company', 'jdmatch', 'feedback', 'letter', 'message'; statusReason set when error occurs (values: 'out_of_credit' for HTTP 402, 'invalid_api_key' for HTTP 401; see app/lib/constants.ts)
+- process table tracks 5 node types: 'company', 'jdmatch', 'feedback', 'letter', 'message'; statusReason set when error occurs (values: 'out_of_credit' for HTTP 402, 'invalid_api_key' for HTTP 401, or error.message string for other errors; see app/lib/constants.ts and resolveStatusReason())
 - cover_letter_history and message_gen_history use jobId as PK (one record per job)
 - user_settings uses userId as PK (one record per user); custom prompts and API key are optional (null if not set); openrouterApiKey stored encrypted
 
@@ -123,7 +123,7 @@ pnpm test-db       # Validate PostgreSQL connection
 
 Resume upload via POST `/api/resumes`:
 - Validates file type (.pdf, .txt, .md)
-- PDF: extracts text via pdf-parse
+- PDF: extracts text via pdf-parse, then removes page footers (pattern: `--\s*\d+\s*of\s*\d+\s*--`)
 - TXT/MD: reads as UTF-8
 - Returns 400 for unsupported formats
 - Stores name (without extension) + content in database
@@ -132,6 +132,7 @@ Resume upload via POST `/api/resumes`:
 - pdf-parse fails on encrypted or malformed PDFs
 - Large PDFs may timeout; no chunked processing implemented
 - File naming: duplicate names create separate entries with same name but different UUID
+- Page footer removal uses regex and removes footers in all PDFs (not configurable per-user)
 
 ## Better-auth Configuration
 

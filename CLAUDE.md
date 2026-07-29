@@ -55,6 +55,11 @@ See full tree and entry points in [Pages & Routing](agent-docs/pages-routing.md)
 - [Conventions & Patterns](agent-docs/conventions.md) — Naming, code org, React patterns, authentication
 - [Gotchas & Troubleshooting](agent-docs/gotchas.md) — Known issues, debugging, environment setup
 
+## Specs and Plans
+
+- Feature specs (sdd workflow): `agent-docs/specs/<YYMMDD>-<slug>/`
+- Implementation plans (implement workflow): `agent-docs/plans/<YYMMDD>-<slug>/`
+
 ## Development
 
 **Setup:**
@@ -80,3 +85,5 @@ pnpm build  # standalone output
 ```
 
 See [Conventions & Patterns](agent-docs/conventions.md) for naming, code org, and authentication patterns.
+
+<!-- docs-baseline: 9d589464a69db822a0e36a220a9a1cb13407ac7b -->

@@ -119,7 +119,7 @@ All routes validate session via `auth.api.getSession({ headers: request.headers 
 
 **Resume routes:**
 - `GET /api/resumes` — List resumes (userId-scoped, excludes content for speed)
-- `POST /api/resumes` — Upload resume from multipart/form-data; validates file type (.pdf, .txt, .md), extracts content (pdf-parse for PDFs, UTF-8 for text), stores name + content, returns { id }
+- `POST /api/resumes` — Upload resume from multipart/form-data; validates file type (.pdf, .txt, .md), extracts content (pdf-parse for PDFs with page footers removed via regex, UTF-8 for text), stores name + content, returns { id }
 - `GET /api/resumes/[id]` — Get single resume with full content (lazy load)
 - `DELETE /api/resumes/[id]` — Remove resume and all related jobs/analysis
 

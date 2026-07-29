@@ -115,7 +115,7 @@ Both factories:
 - Always use baseURL: 'https://openrouter.ai/api/v1'
 - Include maxTokens: 4096 to prevent token degeneration
 - Include modelKwargs: { frequency_penalty: 0.3 } to reduce repetition/gibberish
-- Detect HTTP 401 (invalid API key) via isAuthError() and HTTP 402 (out of credit) via isOutOfCreditError()
+- Detect errors via defineErrorCode() helper: extracts error code from either error.status or error.code property (handles DOMException in production where instanceof checks fail); isOutOfCreditError() returns true for code 402, isAuthError() returns true for code 401
 
 **Usage in workflow nodes:**
 ```typescript
@@ -155,19 +155,26 @@ process {
 **Status reason values** (app/lib/constants.ts):
 - `STATUS_REASON.OUT_OF_CREDIT` ('out_of_credit') — HTTP 402 error from LLM API (out of credit)
 - `STATUS_REASON.INVALID_API_KEY` ('invalid_api_key') — HTTP 401 error from LLM API (user key is invalid)
-- `STATUS_REASON_MESSAGE` maps each reason to user-facing text: "Free trial is over. Add your own OpenRouter API key in Settings, then re-analyze." for out_of_credit, etc.
+- Error message string — for non-402/401 errors, statusReason holds error.message to preserve context
+- `STATUS_REASON_MESSAGE` maps constants to user-facing text: "Free trial is over. Add your own OpenRouter API key in Settings, then re-analyze." for out_of_credit, etc. (regular error messages bypass this mapping)
 
 **Node status lifecycle:**
 1. 'processing' for first 3 nodes (Company, CrossRef, ResumeFeedback) when workflow starts (set by analyze endpoint)
 2. 'pending' for Letter and Message nodes initially
 3. 'processing' for Letter and Message when they start (depends on Company + CrossRef)
 4. 'done' or 'failed' upon completion
-5. On failure, statusReason set via resolveStatusReason(error) which checks precedence: OUT_OF_CREDIT (HTTP 402) takes priority, then INVALID_API_KEY (HTTP 401)
+5. On failure, statusReason set via resolveStatusReason(error): checks OUT_OF_CREDIT (HTTP 402) first, then INVALID_API_KEY (HTTP 401), otherwise stores error.message string if error is Error instance (preserves non-API-error context)
 
 **Error detection and status resolution** — In each node's catch block:
 ```typescript
+function resolveStatusReason(error: unknown): string | null {
+  if (isOutOfCreditError(error)) return STATUS_REASON.OUT_OF_CREDIT;
+  if (isAuthError(error)) return STATUS_REASON.INVALID_API_KEY;
+  return error instanceof Error ? error.message : null;
+}
+
 catch (error) {
-  const statusReason = resolveStatusReason(error);  // Returns OUT_OF_CREDIT or INVALID_API_KEY or null
+  const statusReason = resolveStatusReason(error);  // Returns OUT_OF_CREDIT, INVALID_API_KEY, error.message, or null
   await db.update(processTable).set({ status: ProcessStatus.Failed, statusReason });
   throw error;  // Propagate to workflow.invoke() catch
 }
