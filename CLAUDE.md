@@ -42,23 +42,23 @@ app/
 └── layout.tsx              # Root layout
 ```
 
-See full tree and entry points in [Pages & Routing](agent-docs/pages-routing.md).
+See full tree and entry points in [Pages & Routing](docs/agent-docs/pages-routing.md).
 
 ## Module Documentation
 
-- [UI Components & Design System](agent-docs/ui-components.md) — Primitives, color system, theming
-- [State Management](agent-docs/state-management.md) — AppStore context, CRUD operations, lazy job loading
-- [Pages & Routing](agent-docs/pages-routing.md) — Route structure, data flow, entry points
-- [Styling & Theming](agent-docs/styling-theming.md) — Color palette, CSS organization, tokens
-- [Database & Backend](agent-docs/database-backend.md) — Schema, migrations, API routes, session validation
-- [LangGraph Workflow & Agents](agent-docs/workflow-agents.md) — Node definitions, LLM prompts, Tavily, process tracking
-- [Conventions & Patterns](agent-docs/conventions.md) — Naming, code org, React patterns, authentication
-- [Gotchas & Troubleshooting](agent-docs/gotchas.md) — Known issues, debugging, environment setup
+- [UI Components & Design System](docs/agent-docs/ui-components.md) — Primitives, color system, theming
+- [State Management](docs/agent-docs/state-management.md) — AppStore context, CRUD operations, lazy job loading
+- [Pages & Routing](docs/agent-docs/pages-routing.md) — Route structure, data flow, entry points
+- [Styling & Theming](docs/agent-docs/styling-theming.md) — Color palette, CSS organization, tokens
+- [Database & Backend](docs/agent-docs/database-backend.md) — Schema, migrations, API routes, session validation
+- [LangGraph Workflow & Agents](docs/agent-docs/workflow-agents.md) — Node definitions, LLM prompts, Tavily, process tracking
+- [Conventions & Patterns](docs/agent-docs/conventions.md) — Naming, code org, React patterns, authentication
+- [Gotchas & Troubleshooting](docs/agent-docs/gotchas.md) — Known issues, debugging, environment setup
 
 ## Specs and Plans
 
-- Feature specs (sdd workflow): `agent-docs/specs/<YYMMDD>-<slug>/`
-- Implementation plans (implement workflow): `agent-docs/plans/<YYMMDD>-<slug>/`
+- Feature specs (sdd workflow): `docs/agent-docs/specs/<YYMMDD>-<slug>/`
+- Implementation plans (implement workflow): `docs/agent-docs/plans/<YYMMDD>-<slug>/`
 
 ## Development
 
@@ -84,6 +84,6 @@ pnpm lint
 pnpm build  # standalone output
 ```
 
-See [Conventions & Patterns](agent-docs/conventions.md) for naming, code org, and authentication patterns.
+See [Conventions & Patterns](docs/agent-docs/conventions.md) for naming, code org, and authentication patterns.
 
 <!-- docs-baseline: 9d589464a69db822a0e36a220a9a1cb13407ac7b -->
